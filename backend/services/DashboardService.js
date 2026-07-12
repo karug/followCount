@@ -19,6 +19,10 @@ class DashboardService {
 
         this.cache = new CacheService();
 
+        // Last successful metric per channel, without TTL, so a
+        // transient provider failure never drops the channel.
+        this.lastGood = new Map();
+
     }
 
     async initialize() {
@@ -120,6 +124,17 @@ class DashboardService {
             this.config.refreshSeconds ?? 60
         );
 
+        for (const project of projects) {
+
+            console.log(
+                `Dashboard built: ${project.name} -> ` +
+                project.metrics
+                    .map(metric => `${metric.type}=${metric.value}`)
+                    .join(" ")
+            );
+
+        }
+
         return dashboard;
 
     }
@@ -138,8 +153,32 @@ class DashboardService {
 
         }
 
-        const metric =
-            await provider.fetch(channel);
+        let metric;
+
+        try {
+
+            metric =
+                await provider.fetch(channel);
+
+        } catch (error) {
+
+            const stale =
+                this.lastGood.get(cacheKey);
+
+            if (!stale) {
+
+                throw error;
+
+            }
+
+            console.warn(
+                `Provider '${channel.type}' failed, serving last ` +
+                `known value: ${error.message}`
+            );
+
+            return stale;
+
+        }
 
         // channel.cacheSeconds allows per-channel TTLs longer than
         // the dashboard refresh (e.g. GitHub rate limits).
@@ -153,6 +192,8 @@ class DashboardService {
             metric,
             ttl
         );
+
+        this.lastGood.set(cacheKey, metric);
 
         return metric;
 

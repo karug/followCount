@@ -71,6 +71,8 @@ app.get("/api/dashboard", async (req, res) => {
         const dashboard =
             await dashboardService.build();
 
+        res.set("Cache-Control", "no-store");
+
         res.json(dashboard);
 
     } catch (error) {
