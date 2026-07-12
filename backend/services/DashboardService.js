@@ -68,6 +68,9 @@ class DashboardService {
             refreshSeconds:
                 this.config.refreshSeconds ?? 60,
 
+            slideSeconds:
+                this.config.slideSeconds ?? 8,
+
             projects
 
         };

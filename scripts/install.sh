@@ -5,7 +5,7 @@ BACKEND="$PROJECT_DIR/backend"
 
 echo "[1/6] Instalando dependencias..."
 sudo apt-get update
-sudo apt-get install -y nodejs npm chromium-browser || sudo apt-get install -y nodejs npm chromium
+sudo apt-get install -y nodejs npm unclutter chromium-browser || sudo apt-get install -y nodejs npm unclutter chromium
 
 echo "[2/6] npm install..."
 cd "$BACKEND"
@@ -37,6 +37,7 @@ After=graphical.target followcount-backend.service
 
 [Service]
 Environment=DISPLAY=:0
+ExecStartPre=/bin/sh -c 'unclutter -idle 0 -root & exit 0'
 ExecStart=$CHROMIUM --kiosk --noerrdialogs --disable-infobars http://localhost:3000
 Restart=always
 User=$USER

@@ -1,5 +1,6 @@
 {
   "refreshSeconds": 60,
+  "slideSeconds": 8,
   "projects": [
     {
       "name": "Expirio",
