@@ -1,0 +1,412 @@
+#mainCounterCard {
+    background:
+        linear-gradient(
+            180deg,
+            rgba(255,255,255,.02),
+            rgba(255,255,255,0)
+        ),
+        var(--background-card);
+}
+
+/* ===========================================================
+   Flip Counter
+   =========================================================== */
+
+.flip-counter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+}
+
+.flip-digit,
+.flip-separator {
+
+    position: relative;
+
+    width: var(--digit-width);
+    height: var(--digit-height);
+
+    overflow: hidden;
+
+    border-radius: var(--digit-radius);
+
+    box-shadow: var(--digit-shadow);
+
+}
+
+.flip-digit {
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background: var(--digit-background);
+
+    color: #111;
+
+    font-size: var(--digit-font);
+
+    font-weight: 800;
+
+    transform-style: preserve-3d;
+
+    border: 1px solid #8d8d8d;
+
+}
+
+.flip-separator {
+
+    width: auto;
+    min-width: 12px;
+    height: auto;
+
+    background: transparent;
+
+    color: #d2d2d2;
+
+    font-size: 30px;
+
+    font-weight: 700;
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+
+    padding-bottom: 6px;
+
+    box-shadow: none;
+
+}
+
+.flip-top,
+.flip-bottom,
+.flip-next-top,
+.flip-next-bottom {
+
+    position: absolute;
+
+    left: 0;
+
+    width: 100%;
+
+    display: flex;
+
+    justify-content: center;
+
+    backface-visibility: hidden;
+
+    transition:
+        transform var(--flip-duration) ease,
+        opacity var(--flip-duration) ease;
+
+}
+
+.flip-top,
+.flip-next-top {
+
+    top: 0;
+
+    height: 50%;
+
+    overflow: hidden;
+
+    align-items: flex-end;
+
+    padding-bottom: 1px;
+
+    background: linear-gradient(
+        #ffffff,
+        #ededed
+    );
+
+    color: #111;
+
+}
+
+.flip-bottom,
+.flip-next-bottom {
+
+    bottom: 0;
+
+    height: 50%;
+
+    overflow: hidden;
+
+    align-items: flex-start;
+
+    padding-top: 1px;
+
+    background: linear-gradient(
+        #d9d9d9,
+        #bfbfbf
+    );
+
+    color: #111;
+
+}
+
+.flip-top {
+
+    z-index: 2;
+
+    transform-origin: bottom;
+
+}
+
+.flip-bottom {
+
+    z-index: 2;
+
+    transform-origin: top;
+
+}
+
+.flip-next-top {
+
+    z-index: 1;
+
+    transform-origin: bottom;
+
+    transform: rotateX(90deg);
+
+}
+
+.flip-next-bottom {
+
+    z-index: 1;
+
+    transform-origin: top;
+
+    transform: rotateX(-90deg);
+
+}
+
+.flip-digit.animate .flip-top {
+
+    transform: rotateX(-90deg);
+
+}
+
+.flip-digit.animate .flip-bottom {
+
+    transform: rotateX(90deg);
+
+}
+
+.flip-digit.animate .flip-next-top {
+
+    transform: rotateX(0);
+
+}
+
+.flip-digit.animate .flip-next-bottom {
+
+    transform: rotateX(0);
+
+}
+
+/* ===========================================================
+   Cards
+   =========================================================== */
+
+.social-card {
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: space-between;
+
+    padding: 10px;
+
+    border-radius: var(--radius-md);
+
+    background: var(--background-card);
+
+    border: 1px solid var(--border);
+
+    box-shadow: var(--shadow-soft);
+
+    transition:
+        transform .25s,
+        border-color .25s,
+        box-shadow .25s;
+
+}
+
+.social-card:hover {
+
+    transform: translateY(-2px);
+
+}
+
+.social-header {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+}
+
+.social-icon {
+
+    width: 18px;
+
+    height: 18px;
+
+    object-fit: contain;
+
+}
+
+.social-name {
+
+    font-size: var(--font-sm);
+
+    color: var(--text-secondary);
+
+    font-weight: 600;
+
+}
+
+.social-body {
+
+    display: flex;
+
+    flex: 1;
+
+    align-items: flex-end;
+
+}
+
+.social-value {
+
+    margin-top: auto;
+
+    font-size: 26px;
+
+    font-weight: 800;
+
+    color: #ffffff;
+
+    font-variant-numeric: tabular-nums;
+
+}
+
+.social-card.youtube {
+
+    border-color: rgba(255,0,0,.25);
+
+}
+
+.social-card.youtube:hover {
+
+    box-shadow: var(--shadow-youtube);
+
+}
+
+.social-card.github {
+
+    border-color: rgba(255,255,255,.12);
+
+}
+
+.social-card.github:hover {
+
+    box-shadow: 0 0 16px rgba(255,255,255,.08);
+
+}
+
+.social-card.instagram {
+
+    border-color: rgba(214,41,118,.30);
+
+}
+
+.social-card.instagram:hover {
+
+    box-shadow: var(--shadow-instagram);
+
+}
+
+.social-card.tiktok {
+
+    border-color: rgba(0,242,234,.22);
+
+}
+
+.social-card.tiktok:hover {
+
+    box-shadow: var(--shadow-tiktok);
+
+}
+
+.social-card.twitch {
+
+    border-color: rgba(145,70,255,.25);
+
+}
+
+.social-card.twitch:hover {
+
+    box-shadow: var(--shadow-twitch);
+
+}
+
+.social-card.x {
+
+    border-color: rgba(255,255,255,.15);
+
+}
+
+.social-card.x:hover {
+
+    box-shadow: 0 0 16px rgba(255,255,255,.10);
+
+}
+
+/* ===========================================================
+   Misc
+   =========================================================== */
+
+.loading {
+
+    opacity: .45;
+
+    animation: pulse 1.5s infinite;
+
+}
+
+.fatal-error {
+
+    padding: 24px;
+
+    font-size: 18px;
+
+}
+
+.fatal-error h1 {
+
+    font-size: 34px;
+
+    margin-bottom: 12px;
+
+}
+
+.fatal-error p {
+
+    margin-bottom: 12px;
+
+    color: var(--text-secondary);
+
+}
+
+.fatal-error pre {
+
+    white-space: pre-wrap;
+
+    color: #ff7a7a;
+
+}

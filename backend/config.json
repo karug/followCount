@@ -1,0 +1,20 @@
+{
+  "refreshSeconds": 60,
+  "projects": [
+    {
+      "name": "Expirio",
+      "primaryChannel": "youtube",
+      "channels": [
+        {
+          "type": "youtube",
+          "channelId": "UCzFmcr0uGS2dgKpg0FZBaeg"
+        },
+        {
+          "type": "github",
+          "username": "karug"
+        }
+      ]
+    }
+  ]
+}
+
