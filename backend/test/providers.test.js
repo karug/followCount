@@ -57,6 +57,43 @@ test("instagram toMetric maps the public profile payload", () => {
 
 });
 
+test("instagram toGraphMetric maps the Graph API payload", () => {
+
+    const provider = new InstagramProvider();
+
+    const metric = provider.toGraphMetric(
+        {
+            id: "17841400000000000",
+            username: "expirioapp",
+            name: "Expirio App",
+            followers_count: 4,
+            profile_picture_url: "https://example.com/pic.jpg",
+            media_count: 2
+        },
+        "expirioapp"
+    );
+
+    assert.strictEqual(metric.value, 4);
+
+    assert.strictEqual(metric.label, "@expirioapp");
+
+    assert.strictEqual(metric.metadata.source, "graph");
+
+});
+
+test("instagram graph rejects malformed usernames", async () => {
+
+    const provider = new InstagramProvider();
+
+    provider.accessToken = "token";
+
+    await assert.rejects(
+        () => provider.fetchFromGraph("evil){id}"),
+        /Invalid Instagram username/
+    );
+
+});
+
 test("tiktok extractUserInfo parses the rehydration JSON", () => {
 
     const provider = new TikTokProvider();
