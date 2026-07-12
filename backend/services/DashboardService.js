@@ -167,6 +167,11 @@ class DashboardService {
             slideSeconds:
                 this.config.slideSeconds ?? 8,
 
+            // "fade" reads better on low-fps SPI panels; "slide"
+            // for displays with real GPU compositing.
+            transition:
+                this.config.transition ?? "fade",
+
             projects
 
         };

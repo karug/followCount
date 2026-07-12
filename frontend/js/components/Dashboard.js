@@ -48,6 +48,10 @@ export default class Dashboard {
 
         await Api.load();
 
+        this.#projectView.setTransition(
+            Api.dashboard?.transition ?? 'fade'
+        );
+
         this.#projects = Api.projects.map(
             project => new ProjectViewModel(project)
         );

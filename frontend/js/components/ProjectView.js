@@ -15,12 +15,34 @@ export default class ProjectView {
 
         this.#stage = Dom.id('stage');
 
+        this.setTransition('fade');
+
+    }
+
+    /**
+     * "fade" only animates the incoming screen's opacity — the
+     * cheapest possible transition, smooth even on SPI panels.
+     * "slide" moves both screens and needs GPU compositing.
+     */
+    setTransition(mode) {
+
+        this.#stage.classList.remove(
+            'stage-fade',
+            'stage-slide'
+        );
+
+        this.#stage.classList.add(
+            mode === 'slide'
+                ? 'stage-slide'
+                : 'stage-fade'
+        );
+
     }
 
     async render(project) {
 
         // Same project (periodic refresh): update in place so the
-        // odometer animates digit changes instead of sliding.
+        // odometer animates digit changes instead of transitioning.
         if (
             this.#currentScreen &&
             this.#currentName === project.name
@@ -35,7 +57,7 @@ export default class ProjectView {
         const next = new ProjectScreen(project);
 
         // Double buffering: the incoming screen is fully built
-        // and its images decoded before the slide starts.
+        // and its images decoded before the transition starts.
         await next.preload();
 
         const element = next.element;
@@ -44,9 +66,14 @@ export default class ProjectView {
 
         this.#stage.appendChild(element);
 
-        // Force layout so the enter position is committed before
-        // the transition class is removed.
-        element.getBoundingClientRect();
+        // Let the browser paint the entering state once before
+        // animating, so the first transition frame is not spent
+        // on layout/paint of the new screen.
+        await new Promise(resolve =>
+            requestAnimationFrame(() =>
+                requestAnimationFrame(resolve)
+            )
+        );
 
         const previous = this.#currentScreen;
 
