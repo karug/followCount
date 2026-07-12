@@ -1,75 +1,109 @@
-import Header from './Header.js';
-import FlipCounter from './FlipCounter.js';
-import SocialCard from './SocialCard.js';
 import Dom from '../utils/Dom.js';
+import ProjectScreen from './ProjectScreen.js';
+
+const TRANSITION_MS = 500;
 
 export default class ProjectView {
 
-    #header;
+    #stage;
 
-    #counter;
+    #currentName = null;
 
-    #cardsContainer;
+    #currentScreen = null;
 
     constructor() {
 
-        this.#header = new Header();
+        this.#stage = Dom.id('stage');
 
-        this.#counter = new FlipCounter(
-            Dom.id('flipCounter')
-        );
-
-        this.#cardsContainer =
-            Dom.id('socialCards');
+        this.setTransition('fade');
 
     }
 
-    start() {
+    /**
+     * "fade" only animates the incoming screen's opacity — the
+     * cheapest possible transition, smooth even on SPI panels.
+     * "slide" moves both screens and needs GPU compositing.
+     */
+    setTransition(mode) {
 
-        this.#header.start();
+        this.#stage.classList.remove(
+            'stage-fade',
+            'stage-slide'
+        );
+
+        this.#stage.classList.add(
+            mode === 'slide'
+                ? 'stage-slide'
+                : 'stage-fade'
+        );
 
     }
 
-    render(project) {
+    async render(project) {
 
-        this.#header.render(project);
+        // Same project (periodic refresh): update in place so the
+        // odometer animates digit changes instead of transitioning.
+        if (
+            this.#currentScreen &&
+            this.#currentName === project.name
+        ) {
 
-        this.#counter.render(
-            project.counter
+            this.#currentScreen.update(project);
+
+            return;
+
+        }
+
+        const next = new ProjectScreen(project);
+
+        // Double buffering: the incoming screen is fully built
+        // and its images decoded before the transition starts.
+        await next.preload();
+
+        const element = next.element;
+
+        element.classList.add('screen-enter');
+
+        this.#stage.appendChild(element);
+
+        // Let the browser paint the entering state once before
+        // animating, so the first transition frame is not spent
+        // on layout/paint of the new screen.
+        await new Promise(resolve =>
+            requestAnimationFrame(() =>
+                requestAnimationFrame(resolve)
+            )
         );
 
-        this.#renderCards(
-            project.cards
-        );
+        const previous = this.#currentScreen;
+
+        this.#currentScreen = next;
+
+        this.#currentName = project.name;
+
+        element.classList.remove('screen-enter');
+
+        if (previous) {
+
+            previous.element.classList.add('screen-exit');
+
+            setTimeout(() => {
+
+                previous.element.remove();
+
+            }, TRANSITION_MS + 100);
+
+        }
 
     }
 
     clear() {
 
-        this.#counter.clear();
+        Dom.clear(this.#stage);
 
-        Dom.clear(
-            this.#cardsContainer
-        );
+        this.#currentScreen = null;
 
-    }
-
-    #renderCards(cards) {
-
-        Dom.clear(
-            this.#cardsContainer
-        );
-
-        cards.forEach(metric => {
-
-            const card =
-                new SocialCard(metric);
-
-            this.#cardsContainer.appendChild(
-                card.element
-            );
-
-        });
+        this.#currentName = null;
 
     }
 
