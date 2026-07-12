@@ -6,6 +6,7 @@ body {
 }
 
 #app {
+    position: relative;
     display: flex;
     flex-direction: column;
     width: var(--screen-width);
@@ -14,58 +15,18 @@ body {
 }
 
 /* ===========================================================
-   Header
+   Persistent status (clock + wifi), above the sliding screens
    =========================================================== */
 
-#header {
+.status {
+    position: absolute;
+    top: var(--gap-sm);
+    right: var(--gap-md);
     height: var(--header-height);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--gap-sm);
-}
-
-.project {
-    display: flex;
-    align-items: center;
-    gap: var(--gap-md);
-    min-width: 0;
-}
-
-#projectLogo {
-    width: 56px;
-    height: 56px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    object-fit: cover;
-    background: #333;
-    border: 2px solid rgba(255, 255, 255, .08);
-    box-shadow: var(--shadow-card);
-}
-
-#projectName {
-    font-size: var(--font-lg);
-    font-weight: var(--weight-bold);
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#projectHandle {
-    margin-top: 2px;
-    font-size: var(--font-sm);
-    color: var(--text-secondary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.status {
-    display: flex;
-    align-items: center;
     gap: var(--gap-sm);
-    flex-shrink: 0;
+    z-index: 10;
 }
 
 #wifiIcon {
@@ -88,23 +49,93 @@ body {
 }
 
 /* ===========================================================
-   Main
+   Stage: double-buffered project screens
    =========================================================== */
 
-main {
+#stage {
     flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-sm);
+    position: relative;
+    overflow: hidden;
     min-height: 0;
 }
 
-#mainCounterCard {
+.screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    transition:
+        transform .5s cubic-bezier(.4, 0, .2, 1),
+        opacity .5s ease;
+    will-change: transform, opacity;
+}
+
+.screen-enter {
+    transform: translateX(100%);
+    opacity: .2;
+}
+
+.screen-exit {
+    transform: translateX(-100%);
+    opacity: .2;
+}
+
+/* ===========================================================
+   Screen header (per project)
+   =========================================================== */
+
+.screen-header {
+    height: var(--header-height);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--gap-md);
+    margin-bottom: var(--gap-sm);
+    /* Leave room for the persistent clock on the right. */
+    padding-right: 90px;
+    min-width: 0;
+}
+
+.project-logo {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #333;
+    border: 2px solid rgba(255, 255, 255, .08);
+    box-shadow: var(--shadow-card);
+}
+
+.project-name {
+    font-size: var(--font-lg);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.project-handle {
+    margin-top: 2px;
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ===========================================================
+   Main counter card
+   =========================================================== */
+
+.main-counter-card {
     flex: 0 0 122px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     padding: 12px 14px;
+    margin-bottom: var(--gap-sm);
     border-radius: var(--radius-lg);
     background: var(--background-card);
     border: 1px solid var(--border);
@@ -113,7 +144,7 @@ main {
     overflow: hidden;
 }
 
-#mainCounterCard:before {
+.main-counter-card:before {
     content: "";
     position: absolute;
     top: -60%;
@@ -132,27 +163,24 @@ main {
     margin-bottom: 10px;
 }
 
-#mainNetworkIcon {
+.network-icon {
     width: 20px;
     height: 20px;
 }
 
-#mainNetworkName {
+.network-name {
     color: var(--text-secondary);
     font-size: var(--font-sm);
     font-weight: var(--weight-semibold);
 }
 
-#flipCounter {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 3px;
-}
+/* ===========================================================
+   Social cards
+   =========================================================== */
 
 /* Cards share the row equally regardless of how many there
    are, so a single card takes the full width. */
-#socialCards {
+.social-cards {
     flex: 1;
     display: grid;
     grid-auto-flow: column;
@@ -167,6 +195,7 @@ main {
 
 footer {
     height: var(--footer-height);
+    flex-shrink: 0;
     display: flex;
     justify-content: center;
     align-items: center;
