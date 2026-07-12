@@ -4,9 +4,9 @@
   "projects": [
     {
       "name": "Expirio",
-      "primaryChannel": "youtube",
+      "primaryChannel": "instagram",
       "channels": [
-                {
+        {
           "type": "instagram",
           "username": "experioapp"
         },
@@ -16,11 +16,11 @@
         },
         {
           "type": "tiktok",
-          "username": "experioapp"
+          "username": "expirioapp"
         },
         {
           "type": "facebook",
-          "username": "experioapp"
+          "username": "expirioapp"
         }
       ]
     }
