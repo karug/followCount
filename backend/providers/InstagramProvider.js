@@ -61,9 +61,10 @@ class InstagramProvider {
                     // Public web app id used by instagram.com itself.
                     "x-ig-app-id": "936619743392459",
 
-                    "User-Agent": BROWSER_UA,
-
-                    Referer: `https://www.instagram.com/${username}/`
+                    // A full Chrome UA over Node's TLS fingerprint
+                    // trips Instagram's bot detection (429); the
+                    // generic UA passes.
+                    "User-Agent": "Mozilla/5.0"
 
                 },
 
