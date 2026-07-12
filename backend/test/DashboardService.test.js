@@ -111,6 +111,39 @@ test("fetchMetric propagates failure without a previous value", async () => {
 
 });
 
+test("fetchMetric applies a cooldown after failure", async () => {
+
+    const service = makeService();
+
+    let calls = 0;
+
+    const provider = {
+
+        fetch: async () => {
+
+            calls++;
+
+            throw new Error("boom");
+
+        }
+
+    };
+
+    const channel = { type: "fake", username: "a" };
+
+    await assert.rejects(
+        () => service.fetchMetric(provider, channel)
+    );
+
+    await assert.rejects(
+        () => service.fetchMetric(provider, channel),
+        /cooldown/
+    );
+
+    assert.strictEqual(calls, 1);
+
+});
+
 test("buildProject skips failing channels and picks first logo", async () => {
 
     const service = makeService();

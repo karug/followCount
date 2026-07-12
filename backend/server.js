@@ -39,7 +39,13 @@ app.use(
 
 app.use(
     express.static(
-        path.join(__dirname, "../frontend")
+        path.join(__dirname, "../frontend"),
+        {
+            // Kiosk browsers must revalidate assets on reload so
+            // icon/JS updates reach the screen.
+            maxAge: 0,
+            etag: true
+        }
     )
 );
 

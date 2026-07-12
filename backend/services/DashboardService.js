@@ -149,6 +149,14 @@ class DashboardService {
 
         if (cached) {
 
+            if (cached.failed) {
+
+                throw new Error(
+                    `Provider '${channel.type}' in cooldown after failure`
+                );
+
+            }
+
             return cached;
 
         }
@@ -166,6 +174,17 @@ class DashboardService {
                 this.lastGood.get(cacheKey);
 
             if (!stale) {
+
+                // Negative cache: retrying a failing channel on
+                // every rebuild hammers the platform and keeps
+                // rate limits from ever lifting.
+                this.cache.put(
+                    cacheKey,
+                    { failed: true },
+                    channel.cacheSeconds ??
+                        this.config.refreshSeconds ??
+                        60
+                );
 
                 throw error;
 
