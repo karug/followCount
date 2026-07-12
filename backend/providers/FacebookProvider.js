@@ -19,7 +19,19 @@ class FacebookProvider {
 
         if (this.accessToken) {
 
-            return this.fetchFromGraph(pageId);
+            try {
+
+                return await this.fetchFromGraph(pageId);
+
+            } catch (error) {
+
+                console.warn(
+                    `Facebook Graph API failed for '${pageId}' ` +
+                    `(${error.response?.data?.error?.message ?? error.message}), ` +
+                    "falling back to public widget."
+                );
+
+            }
 
         }
 
