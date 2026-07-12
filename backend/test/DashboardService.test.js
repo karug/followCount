@@ -6,11 +6,21 @@ const assert = require("node:assert");
 const DashboardService = require("../services/DashboardService");
 const Metric = require("../models/Metric");
 
+const os = require("node:os");
+const path = require("node:path");
+const fs = require("node:fs");
+
 function makeService() {
 
     const service = new DashboardService();
 
     service.config = { refreshSeconds: 60 };
+
+    // Keep test runs from touching the real persisted metrics.
+    service.lastGoodFile = path.join(
+        os.tmpdir(),
+        `followcount-test-${process.pid}-${Math.random()}.json`
+    );
 
     return service;
 
@@ -141,6 +151,48 @@ test("fetchMetric applies a cooldown after failure", async () => {
     );
 
     assert.strictEqual(calls, 1);
+
+});
+
+test("last known metrics survive a restart via persistence", async () => {
+
+    const service = makeService();
+
+    const provider = {
+
+        fetch: async () => new Metric({
+            type: "fake",
+            label: "x",
+            value: 7
+        })
+
+    };
+
+    const channel = { type: "fake", username: "a" };
+
+    await service.fetchMetric(provider, channel);
+
+    const reborn = makeService();
+
+    reborn.lastGoodFile = service.lastGoodFile;
+
+    reborn.loadLastGood();
+
+    const failing = {
+
+        fetch: async () => {
+
+            throw new Error("boom");
+
+        }
+
+    };
+
+    const metric = await reborn.fetchMetric(failing, channel);
+
+    assert.strictEqual(metric.value, 7);
+
+    fs.rmSync(service.lastGoodFile, { force: true });
 
 });
 
