@@ -82,6 +82,40 @@ class DashboardService {
 
     }
 
+    async fetchMetric(provider, channel) {
+
+        const cacheKey =
+            "metric:" + JSON.stringify(channel);
+
+        const cached =
+            this.cache.get(cacheKey);
+
+        if (cached) {
+
+            return cached;
+
+        }
+
+        const metric =
+            await provider.fetch(channel);
+
+        // channel.cacheSeconds allows per-channel TTLs longer than
+        // the dashboard refresh (e.g. GitHub rate limits).
+        const ttl =
+            channel.cacheSeconds ??
+            this.config.refreshSeconds ??
+            60;
+
+        this.cache.put(
+            cacheKey,
+            metric,
+            ttl
+        );
+
+        return metric;
+
+    }
+
     async buildProject(project) {
 
         const metrics = [];
@@ -104,7 +138,10 @@ class DashboardService {
             try {
 
                 const metric =
-                    await provider.fetch(channel);
+                    await this.fetchMetric(
+                        provider,
+                        channel
+                    );
 
                 metrics.push(metric);
 
