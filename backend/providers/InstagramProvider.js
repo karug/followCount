@@ -1,5 +1,10 @@
+const { execFile } = require("child_process");
+const { promisify } = require("util");
+
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
+
+const execFileAsync = promisify(execFile);
 
 const BROWSER_UA =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
@@ -21,6 +26,13 @@ class InstagramProvider {
 
             () => this.fetchFromApi(
                 "https://www.instagram.com",
+                channel.username
+            ),
+
+            // Instagram 429s Node's TLS fingerprint on some
+            // networks while accepting curl's, so shell out to
+            // curl as a last resort.
+            () => this.fetchViaCurl(
                 channel.username
             ),
 
@@ -87,6 +99,12 @@ class InstagramProvider {
 
         }
 
+        return this.toMetric(user, username);
+
+    }
+
+    toMetric(user, username) {
+
         return new Metric({
 
             type: "instagram",
@@ -115,6 +133,41 @@ class InstagramProvider {
             }
 
         });
+
+    }
+
+    async fetchViaCurl(username) {
+
+        const url =
+            "https://i.instagram.com/api/v1/users/web_profile_info/" +
+            `?username=${encodeURIComponent(username)}`;
+
+        const { stdout } = await execFileAsync(
+            "curl",
+            [
+                "-s",
+                "-m", "15",
+                "-H", "x-ig-app-id: 936619743392459",
+                "-A", "Mozilla/5.0",
+                url
+            ],
+            {
+                maxBuffer: 5 * 1024 * 1024
+            }
+        );
+
+        const user =
+            JSON.parse(stdout)?.data?.user;
+
+        if (!user) {
+
+            throw new Error(
+                `Instagram user '${username}' not found (curl)`
+            );
+
+        }
+
+        return this.toMetric(user, username);
 
     }
 
