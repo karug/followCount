@@ -21,13 +21,66 @@ class DashboardService {
 
         // Last successful metric per channel, without TTL, so a
         // transient provider failure never drops the channel.
+        // Persisted so a restart during a rate-limit window still
+        // has values to show.
         this.lastGood = new Map();
+
+        this.lastGoodFile = path.join(
+            __dirname,
+            "..",
+            "cache",
+            "metrics.json"
+        );
 
     }
 
     async initialize() {
 
         this.loadConfiguration();
+
+        this.loadLastGood();
+
+    }
+
+    loadLastGood() {
+
+        try {
+
+            const entries = JSON.parse(
+                fs.readFileSync(this.lastGoodFile, "utf8")
+            );
+
+            this.lastGood = new Map(entries);
+
+        } catch (error) {
+
+            // Missing or corrupt file: start empty.
+
+        }
+
+    }
+
+    saveLastGood() {
+
+        try {
+
+            fs.mkdirSync(
+                path.dirname(this.lastGoodFile),
+                { recursive: true }
+            );
+
+            fs.writeFileSync(
+                this.lastGoodFile,
+                JSON.stringify([...this.lastGood.entries()])
+            );
+
+        } catch (error) {
+
+            console.warn(
+                `Unable to persist metrics: ${error.message}`
+            );
+
+        }
 
     }
 
@@ -149,6 +202,14 @@ class DashboardService {
 
         if (cached) {
 
+            if (cached.failed) {
+
+                throw new Error(
+                    `Provider '${channel.type}' in cooldown after failure`
+                );
+
+            }
+
             return cached;
 
         }
@@ -166,6 +227,17 @@ class DashboardService {
                 this.lastGood.get(cacheKey);
 
             if (!stale) {
+
+                // Negative cache: retrying a failing channel on
+                // every rebuild hammers the platform and keeps
+                // rate limits from ever lifting.
+                this.cache.put(
+                    cacheKey,
+                    { failed: true },
+                    channel.cacheSeconds ??
+                        this.config.refreshSeconds ??
+                        60
+                );
 
                 throw error;
 
@@ -194,6 +266,8 @@ class DashboardService {
         );
 
         this.lastGood.set(cacheKey, metric);
+
+        this.saveLastGood();
 
         return metric;
 
