@@ -1,5 +1,6 @@
 const { execFile } = require("child_process");
 const { promisify } = require("util");
+const https = require("https");
 
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
@@ -13,34 +14,69 @@ const BROWSER_UA =
 
 class InstagramProvider {
 
+    constructor() {
+
+        this.agents = {
+
+            4: new https.Agent({ family: 4, keepAlive: true }),
+
+            6: new https.Agent({ family: 6, keepAlive: true })
+
+        };
+
+        // Instagram rate-limits per address, so one family can be
+        // blocked while the other stays clean — and which one
+        // differs per machine. Remember the last family that
+        // worked and try it first.
+        this.preferredFamily = null;
+
+    }
+
+    families() {
+
+        if (this.preferredFamily === 6) {
+
+            return [6, 4];
+
+        }
+
+        return [4, 6];
+
+    }
+
     async fetch(channel) {
 
-        // Instagram rate-limits per IP aggressively (429), so try
-        // several public endpoints before giving up.
-        const strategies = [
+        const strategies = [];
 
-            () => this.fetchFromApi(
-                "https://i.instagram.com",
-                channel.username
-            ),
+        for (const family of this.families()) {
 
-            () => this.fetchFromApi(
-                "https://www.instagram.com",
-                channel.username
-            ),
+            strategies.push(
 
-            // Instagram 429s Node's TLS fingerprint on some
-            // networks while accepting curl's, so shell out to
-            // curl as a last resort.
-            () => this.fetchViaCurl(
-                channel.username
-            ),
+                () => this.fetchFromApi(
+                    "https://i.instagram.com",
+                    channel.username,
+                    family
+                ),
+
+                // Node's TLS fingerprint gets 429'd on some
+                // networks while curl's passes, so alternate
+                // client per family too.
+                () => this.fetchViaCurl(
+                    channel.username,
+                    family
+                )
+
+            );
+
+        }
+
+        strategies.push(
 
             () => this.fetchFromProfileHtml(
                 channel.username
             )
 
-        ];
+        );
 
         let lastError = null;
 
@@ -62,11 +98,13 @@ class InstagramProvider {
 
     }
 
-    async fetchFromApi(host, username) {
+    async fetchFromApi(host, username, family) {
 
         const response = await Http.getJson(
             `${host}/api/v1/users/web_profile_info/`,
             {
+
+                httpsAgent: this.agents[family] ?? undefined,
 
                 headers: {
 
@@ -98,6 +136,8 @@ class InstagramProvider {
             );
 
         }
+
+        this.preferredFamily = family ?? this.preferredFamily;
 
         return this.toMetric(user, username);
 
@@ -136,7 +176,7 @@ class InstagramProvider {
 
     }
 
-    async fetchViaCurl(username) {
+    async fetchViaCurl(username, family = 4) {
 
         const url =
             "https://i.instagram.com/api/v1/users/web_profile_info/" +
@@ -145,6 +185,7 @@ class InstagramProvider {
         const { stdout } = await execFileAsync(
             "curl",
             [
+                family === 6 ? "-6" : "-4",
                 "-s",
                 "-m", "15",
                 "-H", "x-ig-app-id: 936619743392459",
@@ -166,6 +207,8 @@ class InstagramProvider {
             );
 
         }
+
+        this.preferredFamily = family;
 
         return this.toMetric(user, username);
 
