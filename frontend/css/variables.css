@@ -50,6 +50,7 @@
     --tiktok:#00f2ea;
     --twitch:#9146ff;
     --x:#ffffff;
+    --facebook:#1877f2;
 
     --shadow-card:0 6px 14px rgba(0,0,0,.28);
     --shadow-soft:0 2px 6px rgba(0,0,0,.18);
@@ -58,6 +59,7 @@
     --shadow-instagram:0 0 18px rgba(214,41,118,.22);
     --shadow-tiktok:0 0 18px rgba(0,242,234,.18);
     --shadow-twitch:0 0 18px rgba(145,70,255,.18);
+    --shadow-facebook:0 0 18px rgba(24,119,242,.22);
 
     --digit-width:40px;
     --digit-height:64px;

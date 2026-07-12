@@ -11,6 +11,8 @@ class DashboardService {
 
         this.config = null;
 
+        this.configModified = 0;
+
         this.providers = new ProviderFactory();
 
         this.logoService = new LogoService();
@@ -33,9 +35,44 @@ class DashboardService {
             "config.json"
         );
 
-        this.config = JSON.parse(
-            fs.readFileSync(configFile, "utf8")
-        );
+        const modified =
+            fs.statSync(configFile).mtimeMs;
+
+        if (this.config && modified === this.configModified) {
+
+            return;
+
+        }
+
+        try {
+
+            this.config = JSON.parse(
+                fs.readFileSync(configFile, "utf8")
+            );
+
+            this.configModified = modified;
+
+            console.log("Configuration loaded.");
+
+        } catch (error) {
+
+            // Keep serving the previous configuration if the new
+            // file is invalid (e.g. saved mid-edit).
+            if (this.config) {
+
+                console.warn(
+                    `Invalid config.json, keeping previous configuration: ${error.message}`
+                );
+
+                this.configModified = modified;
+
+                return;
+
+            }
+
+            throw error;
+
+        }
 
     }
 
@@ -50,6 +87,8 @@ class DashboardService {
             return cached;
 
         }
+
+        this.loadConfiguration();
 
         const projects = [];
 

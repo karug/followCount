@@ -355,6 +355,18 @@
 
 }
 
+.social-card.facebook {
+
+    border-color: rgba(24,119,242,.30);
+
+}
+
+.social-card.facebook:hover {
+
+    box-shadow: var(--shadow-facebook);
+
+}
+
 .social-card.x {
 
     border-color: rgba(255,255,255,.15);

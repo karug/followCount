@@ -82,6 +82,12 @@ Todos los providers implementados (2026-07-12) con la interfaz común
 -   **Twitch**: Helix API con token de aplicación
     (`TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET`).
 -   **X**: API v2 (`X_BEARER_TOKEN`).
+-   **Facebook Pages**: Graph API (`FACEBOOK_ACCESS_TOKEN`), admite
+    `username` o `pageId`.
+
+Hot reload de `config.json`: se recarga por mtime en cada refresco
+del dashboard, sin reiniciar; si el JSON es inválido se mantiene la
+configuración anterior.
 
 Caché por canal configurable con `cacheSeconds` en `config.json`.
 El dashboard expone `refreshSeconds` y `slideSeconds` y el frontend
@@ -135,7 +141,6 @@ Credenciales únicamente en:
 
 -   Configuración web.
 -   Edición de proyectos desde UI.
--   Hot reload de configuración.
 -   Más proveedores.
 -   Temas.
 -   Exportación/importación.

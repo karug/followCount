@@ -2,7 +2,7 @@
 
 Gadget para Raspberry Pi con pantalla SPI 480x320 que muestra seguidores
 y métricas de varios proyectos (YouTube, GitHub, Instagram, TikTok,
-Twitch y X).
+Twitch, X y Facebook Pages).
 
 ## Requisitos
 
@@ -42,7 +42,8 @@ Proyectos y canales en `backend/config.json`:
         { "type": "instagram", "username": "expirioapp" },
         { "type": "tiktok", "username": "expirioapp" },
         { "type": "twitch", "username": "expirioapp" },
-        { "type": "x", "username": "expirioapp" }
+        { "type": "x", "username": "expirioapp" },
+        { "type": "facebook", "username": "expirioapp" }
       ]
     }
   ]
@@ -53,6 +54,12 @@ Proyectos y canales en `backend/config.json`:
 - `cacheSeconds` (opcional, por canal): TTL de caché superior al
   refresco del dashboard; útil con límites de API (GitHub sin token:
   60 peticiones/hora).
+- Facebook admite `username` o `pageId` (id numérico de la página).
+
+Los cambios en `config.json` se recargan en caliente: el servidor
+comprueba la fecha de modificación del fichero en cada refresco del
+dashboard (cada `refreshSeconds`), sin reiniciar. Si el JSON guardado
+es inválido, mantiene la configuración anterior y avisa por log.
 
 ## Credenciales
 
@@ -65,6 +72,7 @@ Solo en `backend/.env` (nunca en `config.json`). Ver
 | `GITHUB_TOKEN` | — | Opcional, sube el rate limit |
 | `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` | twitch | App en dev.twitch.tv |
 | `X_BEARER_TOKEN` | x | X API v2 |
+| `FACEBOOK_ACCESS_TOKEN` | facebook | Graph API (token de página o app) |
 
 Instagram y TikTok no requieren credenciales (endpoints públicos);
 pueden fallar puntualmente si la plataforma bloquea la petición — el

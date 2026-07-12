@@ -6,13 +6,21 @@
       "name": "Expirio",
       "primaryChannel": "youtube",
       "channels": [
+                {
+          "type": "instagram",
+          "username": "experioapp"
+        },
         {
           "type": "youtube",
           "channelId": "UCzFmcr0uGS2dgKpg0FZBaeg"
         },
         {
-          "type": "github",
-          "username": "karug"
+          "type": "tiktok",
+          "username": "experioapp"
+        },
+        {
+          "type": "facebook",
+          "username": "experioapp"
         }
       ]
     }
