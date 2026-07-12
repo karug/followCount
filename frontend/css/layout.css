@@ -1,1 +1,200 @@
-body{display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at top,#202020 0%,#141414 65%)}#app{display:flex;flex-direction:column;width:var(--screen-width);height:var(--screen-height);padding:var(--gap-md)}#header{height:var(--header-height);display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--gap-md)}.project{display:flex;align-items:center;gap:var(--gap-md)}#projectLogo{width:52px;height:52px;border-radius:50%;object-fit:cover;background:#333;border:2px solid rgba(255,255,255,.08);box-shadow:var(--shadow-card)}#projectName{font-size:var(--font-lg);font-weight:var(--weight-bold);color:var(--text-primary)}#projectHandle{margin-top:2px;font-size:var(--font-sm);color:var(--text-secondary)}.status{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:4px}#wifiIcon img{width:18px;height:18px;opacity:.75}#clock{font-size:var(--font-md);font-weight:var(--weight-semibold);font-variant-numeric:tabular-nums;letter-spacing:.5px}main{flex:1;display:flex;flex-direction:column;gap:var(--gap-md)}#mainCounterCard{flex:0 0 120px;display:flex;flex-direction:column;justify-content:center;padding:14px;border-radius:var(--radius-lg);background:var(--background-card);border:1px solid var(--border);box-shadow:var(--shadow-card);position:relative;overflow:hidden}#mainCounterCard:before{content:"";position:absolute;top:-60%;right:-25%;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(255,0,80,.1),transparent 70%);pointer-events:none}.networkHeader{display:flex;align-items:center;gap:10px;margin-bottom:12px}#mainNetworkIcon{width:22px;height:22px}#mainNetworkName{color:var(--text-secondary);font-size:var(--font-md);font-weight:var(--weight-semibold)}#flipCounter{display:flex;justify-content:center;align-items:center;gap:4px}#socialCards{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:var(--gap-sm);min-height:0}footer{height:var(--footer-height);display:flex;justify-content:center;align-items:center;margin-top:8px}#carouselDots{display:flex;gap:6px}#carouselDots span{width:7px;height:7px;border-radius:50%;background:#555;transition:all var(--transition-normal)}#carouselDots span.active{width:20px;border-radius:20px;background:#fff}@media (max-width:480px){#app{width:100vw;height:100vh}}
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at top, #202020 0%, #141414 65%);
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    width: var(--screen-width);
+    height: var(--screen-height);
+    padding: var(--gap-sm) var(--gap-md);
+}
+
+/* ===========================================================
+   Header
+   =========================================================== */
+
+#header {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--gap-sm);
+}
+
+.project {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-md);
+    min-width: 0;
+}
+
+#projectLogo {
+    width: 56px;
+    height: 56px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #333;
+    border: 2px solid rgba(255, 255, 255, .08);
+    box-shadow: var(--shadow-card);
+}
+
+#projectName {
+    font-size: var(--font-lg);
+    font-weight: var(--weight-bold);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#projectHandle {
+    margin-top: 2px;
+    font-size: var(--font-sm);
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.status {
+    display: flex;
+    align-items: center;
+    gap: var(--gap-sm);
+    flex-shrink: 0;
+}
+
+#wifiIcon {
+    display: flex;
+    align-items: center;
+}
+
+#wifiIcon img {
+    width: 16px;
+    height: 16px;
+    opacity: .75;
+}
+
+#clock {
+    font-size: var(--font-md);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .5px;
+    line-height: 1;
+}
+
+/* ===========================================================
+   Main
+   =========================================================== */
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-sm);
+    min-height: 0;
+}
+
+#mainCounterCard {
+    flex: 0 0 122px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--background-card);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-card);
+    position: relative;
+    overflow: hidden;
+}
+
+#mainCounterCard:before {
+    content: "";
+    position: absolute;
+    top: -60%;
+    right: -25%;
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 0, 80, .1), transparent 70%);
+    pointer-events: none;
+}
+
+.networkHeader {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+#mainNetworkIcon {
+    width: 20px;
+    height: 20px;
+}
+
+#mainNetworkName {
+    color: var(--text-secondary);
+    font-size: var(--font-sm);
+    font-weight: var(--weight-semibold);
+}
+
+#flipCounter {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+}
+
+/* Cards share the row equally regardless of how many there
+   are, so a single card takes the full width. */
+#socialCards {
+    flex: 1;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: var(--gap-sm);
+    min-height: 0;
+}
+
+/* ===========================================================
+   Footer
+   =========================================================== */
+
+footer {
+    height: var(--footer-height);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: var(--gap-xs);
+}
+
+#carouselDots {
+    display: flex;
+    gap: 6px;
+}
+
+#carouselDots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #555;
+    transition: all var(--transition-normal);
+}
+
+#carouselDots span.active {
+    width: 20px;
+    border-radius: 20px;
+    background: #fff;
+}
+
+@media (max-width: 480px) {
+    #app {
+        width: 100vw;
+        height: 100vh;
+    }
+}

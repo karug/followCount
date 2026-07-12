@@ -3,7 +3,7 @@
     --screen-width:480px;
     --screen-height:320px;
 
-    --header-height:64px;
+    --header-height:60px;
     --footer-height:20px;
 
     --gap-xs:4px;
@@ -59,12 +59,12 @@
     --shadow-tiktok:0 0 18px rgba(0,242,234,.18);
     --shadow-twitch:0 0 18px rgba(145,70,255,.18);
 
-    --digit-width:46px;
-    --digit-height:70px;
+    --digit-width:40px;
+    --digit-height:64px;
 
     --digit-radius:8px;
 
-    --digit-font:44px;
+    --digit-font:38px;
 
     --digit-background:linear-gradient(
         180deg,
