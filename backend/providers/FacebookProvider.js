@@ -132,7 +132,7 @@ class FacebookProvider {
         const html = response.data;
 
         const followers = html.match(
-            /([\d.,]+\s*[KMB]?)\s*followers/i
+            /([\d.,]+\s*[KMB]?)\s*followers?/i
         );
 
         if (!followers) {

@@ -202,7 +202,7 @@ class InstagramProvider {
         );
 
         const description = html.match(
-            /content="([\d.,]+[KM]?) Followers/i
+            /content="([\d.,]+[KM]?) Followers?/i
         );
 
         if (!json && !description) {
