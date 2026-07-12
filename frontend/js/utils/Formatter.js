@@ -41,4 +41,32 @@ export default class Formatter {
 
     }
 
+    static time(date = new Date()) {
+
+        const hours = String(
+            date.getHours()
+        ).padStart(2, "0");
+
+        const minutes = String(
+            date.getMinutes()
+        ).padStart(2, "0");
+
+        return `${hours}:${minutes}`;
+
+    }
+
+    static capitalize(value) {
+
+        const text = String(value ?? "");
+
+        if (text.length === 0) {
+
+            return text;
+
+        }
+
+        return text[0].toUpperCase() + text.slice(1);
+
+    }
+
 }
