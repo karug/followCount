@@ -32,6 +32,8 @@ Proyectos y canales en `backend/config.json`:
 ```json
 {
   "refreshSeconds": 60,
+  "slideSeconds": 8,
+  "transition": "fade",
   "projects": [
     {
       "name": "Expirio",
@@ -51,6 +53,14 @@ Proyectos y canales en `backend/config.json`:
 ```
 
 - `primaryChannel`: canal mostrado en el contador principal.
+- `slideSeconds`: segundos que se muestra cada proyecto en el carrusel.
+- `transition`: animación al cambiar de proyecto. La siguiente pantalla
+  se precarga completa (imágenes incluidas) antes de animar:
+  - `"fade"` (por defecto): fundido de 450ms donde solo se anima la
+    pantalla entrante. Recomendado para pantallas SPI de pocos FPS.
+  - `"slide"`: deslizamiento lateral de 500ms de ambas pantallas.
+    Requiere composición por GPU real (HDMI); en paneles SPI se ve a
+    trompicones.
 - `cacheSeconds` (opcional, por canal): TTL de caché superior al
   refresco del dashboard; útil con límites de API (GitHub sin token:
   60 peticiones/hora).
