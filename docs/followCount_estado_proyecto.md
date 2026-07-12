@@ -60,45 +60,32 @@ CSS separado en:
 
 ## Estado visual
 
-Funciona correctamente pero todavía necesita una pasada de diseño.
+Pasada de diseño completada (2026-07-12):
 
-Pendiente:
+-   Márgenes ajustados para 480x320.
+-   Logo a 56px, header a 60px.
+-   Reloj y WiFi alineados en una fila.
+-   Cuadrícula de tarjetas con `grid-auto-flow: column`: cualquier
+    número de tarjetas reparte el ancho; una sola tarjeta ocupa todo.
+-   Dígitos 40x64 para que quepan contadores de 9 cifras.
 
--   Ajustar márgenes generales.
--   Aprovechar mejor los 480x320.
--   Cuadrícula definitiva de tarjetas.
--   Mejorar espaciado del header.
--   Ajustar tamaño del logo (≈56px).
--   Revisar alineación del reloj.
--   Optimizar layout cuando solo exista una tarjeta inferior.
+## Backend
 
-## Backend pendiente
+Todos los providers implementados (2026-07-12) con la interfaz común
+`fetch(channel) -> Metric`:
 
-### GitHub
+-   **GitHub**: followers, estrellas (suma de repos), repos públicos.
+    `GITHUB_TOKEN` opcional para subir el rate limit.
+-   **Instagram**: endpoint público `web_profile_info` (sin credenciales).
+-   **TikTok**: parseo del JSON embebido en la página de perfil
+    (sin credenciales).
+-   **Twitch**: Helix API con token de aplicación
+    (`TWITCH_CLIENT_ID`/`TWITCH_CLIENT_SECRET`).
+-   **X**: API v2 (`X_BEARER_TOKEN`).
 
--   Añadir estrellas.
--   Añadir repositorios públicos.
--   Cache configurable.
-
-### Instagram
-
-Implementar provider.
-
-### TikTok
-
-Implementar provider.
-
-### Twitch
-
-Implementar provider.
-
-### X
-
-Implementar provider.
-
-Todos deben implementar la misma interfaz:
-
-    fetch(channel) -> Metric
+Caché por canal configurable con `cacheSeconds` en `config.json`.
+El dashboard expone `refreshSeconds` y `slideSeconds` y el frontend
+los usa (ya no están hardcodeados).
 
 ## Configuración
 
@@ -136,12 +123,13 @@ Credenciales únicamente en:
 
 ## Objetivo V1
 
--   Dashboard estable.
--   Cambio automático de proyectos.
--   Datos reales.
--   Logos cacheados.
--   Sin dependencias innecesarias.
--   Funcionamiento continuo en Raspberry Pi.
+-   [x] Dashboard estable.
+-   [x] Cambio automático de proyectos.
+-   [x] Datos reales.
+-   [x] Logos cacheados.
+-   [x] Sin dependencias innecesarias.
+-   [ ] Funcionamiento continuo en Raspberry Pi (pendiente de
+    probar en el dispositivo con `scripts/install.sh`).
 
 ## V2
 
