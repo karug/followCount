@@ -72,7 +72,7 @@ Solo en `backend/.env` (nunca en `config.json`). Ver
 | `GITHUB_TOKEN` | — | Opcional, sube el rate limit |
 | `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` | twitch | App en dev.twitch.tv |
 | `X_BEARER_TOKEN` | x | X API v2 |
-| `FACEBOOK_ACCESS_TOKEN` | facebook | Graph API (token de página o app) |
+| `FACEBOOK_ACCESS_TOKEN` | — | Opcional: sin él se usa el widget público, que redondea cifras grandes ("154M") |
 
 Instagram y TikTok no requieren credenciales (endpoints públicos);
 pueden fallar puntualmente si la plataforma bloquea la petición — el
