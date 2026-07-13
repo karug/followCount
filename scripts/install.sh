@@ -38,7 +38,10 @@ After=graphical.target followcount-backend.service
 [Service]
 Environment=DISPLAY=:0
 ExecStartPre=/bin/sh -c 'unclutter -idle 0 -root & exit 0'
-ExecStart=$CHROMIUM --kiosk --noerrdialogs --disable-infobars http://localhost:3000
+ExecStartPre=-/usr/bin/xset s off
+ExecStartPre=-/usr/bin/xset s noblank
+ExecStartPre=-/usr/bin/xset -dpms
+ExecStart=$CHROMIUM --kiosk --noerrdialogs --disable-infobars --disable-background-timer-throttling --disable-backgrounding-occluded-windows --disable-renderer-backgrounding http://localhost:3000
 Restart=always
 User=$USER
 
