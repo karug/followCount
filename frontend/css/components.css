@@ -247,6 +247,8 @@
 
     align-items: center;
 
+    justify-content: center;
+
     gap: 8px;
 
 }
@@ -278,6 +280,8 @@
     flex: 1;
 
     align-items: flex-end;
+
+    justify-content: center;
 
 }
 
