@@ -11,6 +11,8 @@ export default class ProjectView {
 
     #currentScreen = null;
 
+    #renderToken = 0;
+
     constructor() {
 
         this.#stage = Dom.id('stage');
@@ -54,11 +56,21 @@ export default class ProjectView {
 
         }
 
+        // Renders can overlap (carousel tick + refresh); only the
+        // most recent one may commit, older ones abort quietly.
+        const token = ++this.#renderToken;
+
         const next = new ProjectScreen(project);
 
         // Double buffering: the incoming screen is fully built
         // and its images decoded before the transition starts.
         await next.preload();
+
+        if (token !== this.#renderToken) {
+
+            return;
+
+        }
 
         const element = next.element;
 
@@ -67,13 +79,18 @@ export default class ProjectView {
         this.#stage.appendChild(element);
 
         // Let the browser paint the entering state once before
-        // animating, so the first transition frame is not spent
-        // on layout/paint of the new screen.
-        await new Promise(resolve =>
-            requestAnimationFrame(() =>
-                requestAnimationFrame(resolve)
-            )
-        );
+        // animating. Time-capped: kiosk browsers stop firing
+        // requestAnimationFrame when they think the window is
+        // occluded, and an uncapped wait would hang forever.
+        await this.#nextFrame();
+
+        if (token !== this.#renderToken) {
+
+            element.remove();
+
+            return;
+
+        }
 
         const previous = this.#currentScreen;
 
@@ -87,13 +104,13 @@ export default class ProjectView {
 
             previous.element.classList.add('screen-exit');
 
-            setTimeout(() => {
-
-                previous.element.remove();
-
-            }, TRANSITION_MS + 100);
-
         }
+
+        setTimeout(() => {
+
+            this.#sweep();
+
+        }, TRANSITION_MS + 100);
 
     }
 
@@ -104,6 +121,46 @@ export default class ProjectView {
         this.#currentScreen = null;
 
         this.#currentName = null;
+
+    }
+
+    #nextFrame(capMs = 120) {
+
+        return new Promise(resolve => {
+
+            const cap = setTimeout(resolve, capMs);
+
+            requestAnimationFrame(() => {
+
+                requestAnimationFrame(() => {
+
+                    clearTimeout(cap);
+
+                    resolve();
+
+                });
+
+            });
+
+        });
+
+    }
+
+    // Remove every screen except the current one, so aborted or
+    // exited screens can never pile up in the stage.
+    #sweep() {
+
+        const current = this.#currentScreen?.element;
+
+        [...this.#stage.children].forEach(child => {
+
+            if (child !== current) {
+
+                child.remove();
+
+            }
+
+        });
 
     }
 

@@ -4,6 +4,14 @@ import ProjectView from './ProjectView.js';
 import StatusBar from './StatusBar.js';
 import ProjectViewModel from '../viewmodels/ProjectViewModel.js';
 
+// A kiosk runs unattended for months. If the tab wedges for any
+// reason we didn't anticipate (network stack stall, memory leak,
+// a browser quirk), the only reliable fix is a full reload rather
+// than trying to enumerate every possible failure mode.
+const WATCHDOG_MULTIPLIER = 3;
+
+const WATCHDOG_MIN_MS = 5 * 60 * 1000;
+
 export default class Dashboard {
 
     #statusBar;
@@ -13,6 +21,8 @@ export default class Dashboard {
     #projectView;
 
     #projects = [];
+
+    #lastSuccessAt = Date.now();
 
     constructor() {
 
@@ -42,11 +52,15 @@ export default class Dashboard {
 
         this.#startRefreshLoop();
 
+        this.#startWatchdog();
+
     }
 
     async refresh() {
 
         await Api.load();
+
+        this.#lastSuccessAt = Date.now();
 
         this.#projectView.setTransition(
             Api.dashboard?.transition ?? 'fade'
@@ -95,6 +109,35 @@ export default class Dashboard {
             }
 
         }, this.#refreshMilliseconds());
+
+    }
+
+    #startWatchdog() {
+
+        setInterval(() => {
+
+            // Recomputed on every tick: refreshSeconds can change
+            // via config.json hot reload, and a threshold fixed at
+            // startup would drift out of sync with it.
+            const threshold = Math.max(
+                this.#refreshMilliseconds() * WATCHDOG_MULTIPLIER,
+                WATCHDOG_MIN_MS
+            );
+
+            const staleFor =
+                Date.now() - this.#lastSuccessAt;
+
+            if (staleFor > threshold) {
+
+                console.error(
+                    `No successful refresh in ${Math.round(staleFor / 1000)}s, reloading.`
+                );
+
+                window.location.reload();
+
+            }
+
+        }, 30000);
 
     }
 
