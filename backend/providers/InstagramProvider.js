@@ -4,6 +4,7 @@ const https = require("https");
 
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
+const TokenService = require("../services/InstagramTokenService");
 
 const execFileAsync = promisify(execFile);
 
@@ -30,17 +31,18 @@ class InstagramProvider {
         // worked and try it first.
         this.preferredFamily = null;
 
-        // Official Instagram Graph API (exact counts, no
-        // scraping): needs a long-lived token with
-        // pages_show_list + instagram_basic; accounts not linked
-        // to an owned page additionally need
-        // instagram_manage_insights (business discovery).
-        this.accessToken =
-            process.env.INSTAGRAM_ACCESS_TOKEN ?? null;
-
         this.ownAccounts = null;
 
         this.ownAccountsExpires = 0;
+
+    }
+
+    // Read live from the shared service instead of caching at
+    // construction, so a background token refresh applies
+    // immediately without restarting the process.
+    get accessToken() {
+
+        return TokenService.getToken();
 
     }
 

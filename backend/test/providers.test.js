@@ -85,8 +85,6 @@ test("instagram graph rejects malformed usernames", async () => {
 
     const provider = new InstagramProvider();
 
-    provider.accessToken = "token";
-
     await assert.rejects(
         () => provider.fetchFromGraph("evil){id}"),
         /Invalid Instagram username/

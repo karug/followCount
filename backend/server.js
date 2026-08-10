@@ -4,6 +4,7 @@ const express = require("express");
 const path = require("path");
 
 const DashboardService = require("./services/DashboardService");
+const InstagramTokenService = require("./services/InstagramTokenService");
 
 const app = express();
 
@@ -59,7 +60,8 @@ app.get("/api/health", (req, res) => {
 
     res.json({
         status: "UP",
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        instagramToken: InstagramTokenService.status()
     });
 
 });
@@ -123,6 +125,13 @@ app.get("*", (req, res) => {
 async function start() {
 
     try {
+
+        InstagramTokenService.load();
+
+        // Refreshes the token every 48h so a 60-day expiry is
+        // never reached; a hard invalidation (password change,
+        // logout elsewhere) still needs a manual new token.
+        InstagramTokenService.start(48);
 
         await dashboardService.initialize();
 
