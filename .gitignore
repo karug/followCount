@@ -1,6 +1,7 @@
 .env
 *.zip
 cache/
+state/
 logs/
 node_modules/
 .vscode/*

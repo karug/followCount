@@ -25,10 +25,12 @@ class DashboardService {
         // has values to show.
         this.lastGood = new Map();
 
+        // Not under cache/: that directory is served publicly at
+        // /cache for logos.
         this.lastGoodFile = path.join(
             __dirname,
             "..",
-            "cache",
+            "state",
             "metrics.json"
         );
 
