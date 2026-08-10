@@ -114,12 +114,15 @@ export default class Dashboard {
 
     #startWatchdog() {
 
-        const threshold = Math.max(
-            this.#refreshMilliseconds() * WATCHDOG_MULTIPLIER,
-            WATCHDOG_MIN_MS
-        );
-
         setInterval(() => {
+
+            // Recomputed on every tick: refreshSeconds can change
+            // via config.json hot reload, and a threshold fixed at
+            // startup would drift out of sync with it.
+            const threshold = Math.max(
+                this.#refreshMilliseconds() * WATCHDOG_MULTIPLIER,
+                WATCHDOG_MIN_MS
+            );
 
             const staleFor =
                 Date.now() - this.#lastSuccessAt;
