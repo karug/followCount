@@ -8,11 +8,6 @@ const TokenService = require("../services/InstagramTokenService");
 
 const execFileAsync = promisify(execFile);
 
-const BROWSER_UA =
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-    "AppleWebKit/537.36 (KHTML, like Gecko) " +
-    "Chrome/126.0.0.0 Safari/537.36";
-
 class InstagramProvider {
 
     constructor() {
@@ -498,7 +493,11 @@ class InstagramProvider {
 
                 headers: {
 
-                    "User-Agent": BROWSER_UA,
+                    // A full Chrome UA over Node's TLS fingerprint
+                    // makes Instagram serve the full client app
+                    // shell (no SSR meta tags); the generic UA
+                    // gets the crawler-friendly page with them.
+                    "User-Agent": "Mozilla/5.0",
 
                     "Accept-Language": "en-US,en;q=0.9",
 
@@ -527,9 +526,21 @@ class InstagramProvider {
 
         }
 
-        const logo = html.match(
+        // profile_pic_url_hd only appears in the full JSON payload
+        // (alongside edge_followed_by); the crawler-friendly page
+        // only has the smaller og:image, HTML-entity escaped.
+        const jsonLogo = html.match(
             /"profile_pic_url_hd":"([^"]+)"/
         );
+
+        const ogLogo = html.match(
+            /<meta property="og:image" content="([^"]+)"/
+        );
+
+        const logo =
+            jsonLogo
+                ? JSON.parse(`"${jsonLogo[1]}"`)
+                : ogLogo?.[1]?.replace(/&amp;/g, "&") ?? null;
 
         return new Metric({
 
@@ -542,10 +553,7 @@ class InstagramProvider {
                     ? Number(json[1])
                     : this.parseCompact(description[1]),
 
-            logo:
-                logo
-                    ? JSON.parse(`"${logo[1]}"`)
-                    : null,
+            logo,
 
             metadata: {
 
