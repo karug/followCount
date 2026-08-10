@@ -15,10 +15,12 @@ class InstagramTokenService {
 
     constructor() {
 
+        // Not under cache/: that directory is served publicly at
+        // /cache for logos, and this file holds a live credential.
         this.tokenFile = path.join(
             __dirname,
             "..",
-            "cache",
+            "state",
             "instagram-token.json"
         );
 

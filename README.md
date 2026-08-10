@@ -132,7 +132,8 @@ cifras exactas, sin bloqueos.
 **Auto-refresco**: con `FACEBOOK_APP_ID` y `FACEBOOK_APP_SECRET`
 también en `.env`, el servidor renueva el token cada 48h
 (`fb_exchange_token`, igual que el paso 7) y lo persiste en
-`backend/cache/instagram-token.json` — nunca llega a los 60 días de
+`backend/state/instagram-token.json` (fuera de `cache/`, que se
+sirve públicamente en `/cache/logos`) — nunca llega a los 60 días de
 caducidad y no hace falta reiniciar para que el nuevo token surta
 efecto. Esto **no** protege contra una invalidación explícita
 (cambio de contraseña de Facebook, cierre de sesión en todos los

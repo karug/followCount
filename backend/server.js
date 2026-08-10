@@ -31,10 +31,15 @@ app.use(express.urlencoded({
 | Static frontend
 |--------------------------------------------------------------------------
 */
+// Only cache/logos/ is public. Never widen this to the whole
+// cache/ directory: state/ (tokens, cached metrics) lives outside
+// it specifically so this route can't reach it, but scoping the
+// mount narrowly is a second line of defense against anything
+// else ending up under cache/ by mistake.
 app.use(
-    "/cache",
+    "/cache/logos",
     express.static(
-        path.join(__dirname, "cache")
+        path.join(__dirname, "cache", "logos")
     )
 );
 
