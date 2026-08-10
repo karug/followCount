@@ -35,6 +35,13 @@ class InstagramProvider {
 
         this.ownAccountsExpires = 0;
 
+        // /me/accounts enumeration needs business_management,
+        // which not every token grant includes; a direct fetch by
+        // page id works with just pages_read_engagement. Once any
+        // linked account resolves this way, its IG id becomes the
+        // gateway for business discovery of unlinked usernames.
+        this.gatewayIgId = null;
+
     }
 
     // Read live from the shared service instead of caching at
@@ -65,7 +72,8 @@ class InstagramProvider {
             try {
 
                 return await this.fetchFromGraph(
-                    channel.username
+                    channel.username,
+                    channel.facebookPageId
                 );
 
             } catch (error) {
@@ -133,13 +141,26 @@ class InstagramProvider {
 
     }
 
-    async fetchFromGraph(username) {
+    async fetchFromGraph(username, pageId) {
 
         if (!/^[A-Za-z0-9._]+$/.test(username)) {
 
             throw new Error(
                 `Invalid Instagram username '${username}'`
             );
+
+        }
+
+        if (pageId) {
+
+            const account =
+                await this.fetchOwnByPageId(pageId, username);
+
+            if (account) {
+
+                return account;
+
+            }
 
         }
 
@@ -168,13 +189,16 @@ class InstagramProvider {
                 }
             );
 
+            this.gatewayIgId = ownId;
+
             return this.toGraphMetric(user, username);
 
         }
 
         // Not one of our linked accounts: business discovery
-        // through the first linked professional account.
+        // through a linked professional account.
         const gatewayId =
+            this.gatewayIgId ??
             accounts.values().next().value;
 
         if (!gatewayId) {
@@ -215,6 +239,53 @@ class InstagramProvider {
             response.business_discovery,
             username
         );
+
+    }
+
+    /**
+     * Resolves the Instagram account linked to a known Facebook
+     * page id directly — works with just pages_read_engagement,
+     * unlike /me/accounts which needs business_management. Returns
+     * null (not a throw) when the page doesn't link the requested
+     * username, so the caller can fall through to the other paths.
+     */
+    async fetchOwnByPageId(pageId, username) {
+
+        const page = await Http.getJson(
+            `https://graph.facebook.com/v21.0/${pageId}`,
+            {
+
+                params: {
+
+                    fields:
+                        "instagram_business_account{id,username," +
+                        "name,followers_count,profile_picture_url," +
+                        "media_count}",
+
+                    access_token: this.accessToken
+
+                }
+
+            }
+        );
+
+        const account = page.instagram_business_account;
+
+        if (!account) {
+
+            return null;
+
+        }
+
+        this.gatewayIgId = account.id;
+
+        if (account.username?.toLowerCase() !== username.toLowerCase()) {
+
+            return null;
+
+        }
+
+        return this.toGraphMetric(account, username);
 
     }
 
