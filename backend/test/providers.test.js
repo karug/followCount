@@ -92,6 +92,89 @@ test("instagram graph rejects malformed usernames", async () => {
 
 });
 
+test("extractFollowersFromHtml reads the edge_followed_by JSON when present", () => {
+
+    const provider = new InstagramProvider();
+
+    const html = '<script>"edge_followed_by":{"count":42}</script>' +
+        '<meta content="9 Followers, 3 Following" />';
+
+    assert.deepStrictEqual(
+        provider.extractFollowersFromHtml(html),
+        { value: 42, approximate: false }
+    );
+
+});
+
+test("extractFollowersFromHtml falls back to the compact og:description count", () => {
+
+    const provider = new InstagramProvider();
+
+    const html =
+        '<meta content="1.2K Followers, 45 Following, 6 Posts" />';
+
+    assert.deepStrictEqual(
+        provider.extractFollowersFromHtml(html),
+        { value: 1200, approximate: true }
+    );
+
+});
+
+test("extractFollowersFromHtml throws when neither pattern is present", () => {
+
+    const provider = new InstagramProvider();
+
+    assert.throws(
+        () => provider.extractFollowersFromHtml("<html>login wall</html>"),
+        /didn't contain follower data/
+    );
+
+});
+
+test("extractLogoFromHtml prefers profile_pic_url_hd over og:image", () => {
+
+    const provider = new InstagramProvider();
+
+    const html =
+        '"profile_pic_url_hd":"https:\\/\\/example.com\\/hd.jpg"' +
+        '<meta property="og:image" content="https://example.com/og.jpg" />';
+
+    assert.strictEqual(
+        provider.extractLogoFromHtml(html),
+        "https://example.com/hd.jpg"
+    );
+
+});
+
+test("extractLogoFromHtml falls back to og:image, tolerant of attribute order", () => {
+
+    const provider = new InstagramProvider();
+
+    // Real Instagram markup has other attributes and no fixed
+    // spacing between property= and content=, unlike a minimal
+    // hand-written fixture.
+    const html =
+        '<meta data-x="1"\n  property="og:image"   ' +
+        'content="https://example.com/og.jpg?a=1&amp;b=2" data-y="2"/>';
+
+    assert.strictEqual(
+        provider.extractLogoFromHtml(html),
+        "https://example.com/og.jpg?a=1&b=2"
+    );
+
+});
+
+test("extractLogoFromHtml returns null when neither source is present", () => {
+
+    const provider = new InstagramProvider();
+
+    assert.strictEqual(
+        provider.extractLogoFromHtml("<html></html>"),
+        null
+    );
+
+});
+
 test("tiktok extractUserInfo parses the rehydration JSON", () => {
 
     const provider = new TikTokProvider();
