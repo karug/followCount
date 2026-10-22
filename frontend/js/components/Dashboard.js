@@ -12,6 +12,13 @@ const WATCHDOG_MULTIPLIER = 3;
 
 const WATCHDOG_MIN_MS = 5 * 60 * 1000;
 
+// The first request after a cold boot can be slow or fail while the
+// backend warms up. Retry with backoff instead of giving up, since
+// nobody is there to reload the page.
+const START_RETRY_MIN_MS = 2000;
+
+const START_RETRY_MAX_MS = 30000;
+
 export default class Dashboard {
 
     #statusBar;
@@ -38,7 +45,7 @@ export default class Dashboard {
 
         this.#statusBar.start();
 
-        await this.refresh();
+        await this.#refreshUntilSuccess();
 
         this.#carousel.onChange(project => {
 
@@ -53,6 +60,35 @@ export default class Dashboard {
         this.#startRefreshLoop();
 
         this.#startWatchdog();
+
+    }
+
+    async #refreshUntilSuccess() {
+
+        let delay = START_RETRY_MIN_MS;
+
+        while (true) {
+
+            try {
+
+                await this.refresh();
+
+                return;
+
+            } catch (error) {
+
+                console.error(
+                    `Initial load failed, retrying in ${Math.round(delay / 1000)}s.`,
+                    error
+                );
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+
+                delay = Math.min(delay * 2, START_RETRY_MAX_MS);
+
+            }
+
+        }
 
     }
 
