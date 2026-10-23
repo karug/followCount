@@ -42,6 +42,38 @@ export default class Api {
 
     }
 
+    // Fire-and-forget liveness signal for the out-of-browser watchdog.
+    // It must never throw or block the UI, whatever happens to the request.
+    static heartbeat(payload, timeoutMs = 5000) {
+
+        try {
+
+            const controller = new AbortController();
+
+            const timeout = setTimeout(
+                () => controller.abort(new Error(
+                    `Heartbeat timed out after ${Math.round(timeoutMs / 1000)}s`
+                )),
+                timeoutMs
+            );
+
+            fetch('/api/heartbeat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            })
+                .catch(() => {})
+                .finally(() => clearTimeout(timeout));
+
+        } catch (error) {
+
+            // Ignored on purpose: a missed heartbeat is not an app error.
+
+        }
+
+    }
+
     static get dashboard() {
 
         return this.#dashboard;

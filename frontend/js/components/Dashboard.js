@@ -31,6 +31,8 @@ export default class Dashboard {
 
     #lastSuccessAt = Date.now();
 
+    #loadedAt = Date.now();
+
     constructor() {
 
         this.#statusBar = new StatusBar();
@@ -47,11 +49,15 @@ export default class Dashboard {
 
         await this.#refreshUntilSuccess();
 
-        this.#carousel.onChange(project => {
+        this.#carousel.onChange((project, index) => {
 
             this.#projectView.render(project);
 
+            this.#sendHeartbeat(index);
+
         });
+
+        this.#sendHeartbeat(this.#carousel.currentIndex());
 
         this.#carousel.start(
             this.#slideMilliseconds()
@@ -134,6 +140,9 @@ export default class Dashboard {
 
                 this.#carousel.go(current);
 
+                // Covers decks with a single slide, which never change.
+                this.#sendHeartbeat(current);
+
                 this.#carousel.start(
                     this.#slideMilliseconds()
                 );
@@ -174,6 +183,16 @@ export default class Dashboard {
             }
 
         }, 30000);
+
+    }
+
+    #sendHeartbeat(slide) {
+
+        Api.heartbeat({
+            slide,
+            visibility: document.visibilityState,
+            uptimeSeconds: Math.round((Date.now() - this.#loadedAt) / 1000)
+        });
 
     }
 
