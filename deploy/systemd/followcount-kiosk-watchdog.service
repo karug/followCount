@@ -1,0 +1,7 @@
+[Unit]
+Description=followCount kiosk watchdog (restarts the browser if the page froze)
+After=followcount-backend.service
+
+[Service]
+Type=oneshot
+ExecStart=/home/info/followCount/deploy/kiosk-watchdog.sh
