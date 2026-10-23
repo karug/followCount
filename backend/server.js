@@ -5,12 +5,17 @@ const path = require("path");
 
 const DashboardService = require("./services/DashboardService");
 const InstagramTokenService = require("./services/InstagramTokenService");
+const KioskMonitor = require("./services/KioskMonitor");
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
 const dashboardService = new DashboardService();
+
+const kioskMonitor = new KioskMonitor(
+    () => dashboardService.config ?? {}
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -66,8 +71,31 @@ app.get("/api/health", (req, res) => {
     res.json({
         status: "UP",
         timestamp: new Date().toISOString(),
-        instagramToken: InstagramTokenService.status()
+        instagramToken: InstagramTokenService.status(),
+        kiosk: kioskMonitor.status()
     });
+
+});
+
+/*
+|--------------------------------------------------------------------------
+| Kiosk heartbeat
+|--------------------------------------------------------------------------
+*/
+
+app.post("/api/heartbeat", (req, res) => {
+
+    kioskMonitor.record(req.body);
+
+    res.sendStatus(204);
+
+});
+
+app.get("/api/kiosk", (req, res) => {
+
+    res.set("Cache-Control", "no-store");
+
+    res.json(kioskMonitor.status());
 
 });
 
