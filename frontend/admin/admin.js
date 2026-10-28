@@ -881,6 +881,8 @@ function stopPolling() {
 
 function waitForRestart() {
 
+    stopPolling();
+
     document.body.append(h("div", { class: "overlay" }, "Reiniciando…"));
 
     const startedAt = Date.now();
@@ -893,7 +895,8 @@ function waitForRestart() {
 
             const response = await fetch(`${API}/session`, { credentials: "same-origin", cache: "no-store" });
 
-            if (response.ok && pollTimer !== null && (sawDown || Date.now() - startedAt >= 60000)) {
+            // A 401 (no session) still means the server is back: boot() shows the login
+            if (response.status < 500 && pollTimer !== null && (sawDown || Date.now() - startedAt >= 60000)) {
                 boot();
             }
 

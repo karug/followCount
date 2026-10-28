@@ -79,12 +79,28 @@ sobrescribe. Corrige el fichero y reinicia.
 ```bash
 ssh raspiCount
 cd ~/followCount/backend
-nano state/settings.json     # elimina admin.passwordHash
-sudo systemctl restart followcount-backend
+sudo systemctl stop followcount-backend
+nano state/settings.json     # pon "passwordHash": null (no borres la línea: el JSON quedaría inválido)
+sudo systemctl start followcount-backend
 ```
 
-Sin `admin.passwordHash`, `/admin` vuelve a pedir la creación de una
-contraseña nueva.
+Con `admin.passwordHash` en `null`, `/admin` vuelve a pedir la creación
+de una contraseña nueva. Para el servicio antes de editar: si no, el
+backend podría reescribir el fichero con el valor anterior.
+
+### Acciones del sistema
+
+Las acciones "Reiniciar pantalla" y "Reiniciar Pi" del panel ejecutan
+`sudo -n systemctl restart followcount-kiosk` y
+`sudo -n systemctl reboot`. El usuario que ejecuta el servicio del
+backend necesita `sudo` sin contraseña para esos dos comandos; sin
+ello, la acción falla con un error.
+
+### Limpieza tras la migración
+
+Cuando compruebes que el panel funciona, borra `backend/.env` y
+`backend/state/instagram-token.json` (o, al menos, `chmod 600` a
+ambos): guardan secretos que ya están en `settings.json`.
 
 ## Configuración
 
@@ -204,7 +220,8 @@ el token deja de valer y hay que generar otro.
 - `POST /api/heartbeat` — latido que envía el frontend en cada cambio
   de diapositiva y tras cada refresco; responde 204.
 - `GET /api/kiosk` — `{ lastHeartbeatAt, ageSeconds, thresholdSeconds,
-  stale, last }`. El umbral es `max(180, 3 × max(slideSeconds,
+  stale, last, uptimeSeconds }` (`uptimeSeconds`: segundos desde el
+  arranque del backend). El umbral es `max(180, 3 × max(slideSeconds,
   refreshSeconds))`; sin latidos aún, la edad cuenta desde el arranque
   del backend.
 - `GET /api/dashboard` — modelo listo para pintar (proyectos, métricas,

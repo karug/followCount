@@ -167,7 +167,7 @@ export default class Dashboard {
         setInterval(() => {
 
             // Recomputed on every tick: refreshSeconds can change
-            // via config.json hot reload, and a threshold fixed at
+            // via a settings change, and a threshold fixed at
             // startup would drift out of sync with it.
             const threshold = Math.max(
                 this.#refreshMilliseconds() * WATCHDOG_MULTIPLIER,
