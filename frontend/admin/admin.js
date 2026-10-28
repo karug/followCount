@@ -399,7 +399,9 @@ function renderStatus(box, status) {
                 row(tokenName(name),
                     token.valid === true ? "Válido" : token.valid === false ? "No válido" : "Sin comprobar",
                     token.valid === true ? "good" : token.valid === false ? "bad" : ""),
-                row("Caducidad", typeof token.expiresAt === "number" ? `caduca el ${formatDay(token.expiresAt)}` : "no caduca"),
+                row("Caducidad", typeof token.expiresAt === "number"
+                    ? `caduca el ${formatDay(token.expiresAt)}`
+                    : token.valid === true ? "no caduca" : "—"),
                 row("Último error", token.error ?? "ninguno")
             )),
 
@@ -471,18 +473,38 @@ function channelFields(channel) {
 
 }
 
+// A primary channel whose type no longer exists would fail server validation.
+function dropOrphanPrimary(project) {
+
+    if (project.primaryChannel !== undefined
+        && !project.channels.some(channel => channel.type === project.primaryChannel)) {
+        delete project.primaryChannel;
+    }
+
+}
+
 function renderChannel(project, channel, channelIndex) {
 
     const type = h("select", {}, CHANNEL_TYPES.map(name => h("option", { value: name, selected: name === channel.type }, name)));
 
     type.addEventListener("change", () => {
 
-        // Identifier fields don't carry over between types.
-        for (const key of ["channelId", "pageId", "username", "facebookPageId"]) {
-            delete channel[key];
+        channel.type = type.value;
+
+        // Drop only the identifier fields the new type doesn't use.
+        if (channel.type !== "youtube") {
+            delete channel.channelId;
         }
 
-        channel.type = type.value;
+        if (channel.type !== "facebook") {
+            delete channel.pageId;
+        }
+
+        if (channel.type !== "instagram") {
+            delete channel.facebookPageId;
+        }
+
+        dropOrphanPrimary(project);
 
         renderProjects();
 
@@ -511,6 +533,7 @@ function renderChannel(project, channel, channelIndex) {
             class: "secondary",
             onclick: () => {
                 project.channels.splice(channelIndex, 1);
+                dropOrphanPrimary(project);
                 renderProjects();
             }
         }, "Quitar canal")
@@ -860,20 +883,23 @@ function waitForRestart() {
 
     document.body.append(h("div", { class: "overlay" }, "Reiniciando…"));
 
-    // First poll comes after 5 s, by when the process has already exited.
+    const startedAt = Date.now();
+
+    let sawDown = false;
+
     pollTimer = setInterval(async () => {
 
         try {
 
             const response = await fetch(`${API}/session`, { credentials: "same-origin", cache: "no-store" });
 
-            if (response.ok) {
+            if (response.ok && pollTimer !== null && (sawDown || Date.now() - startedAt >= 60000)) {
                 boot();
             }
 
         } catch (error) {
 
-            // Still down: keep polling.
+            sawDown = true;
 
         }
 
@@ -916,6 +942,11 @@ function renderActions() {
 
                     if (error instanceof Unauthorized) {
                         return boot();
+                    }
+
+                    // The restart may cut the connection before the reply arrives.
+                    if (action.restarts) {
+                        return waitForRestart();
                     }
 
                     setMessage(message, "Error de conexión.", "error");
