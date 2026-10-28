@@ -86,7 +86,11 @@ class MetaTokenService {
 
         } catch (error) {
 
-            return { valid: null, expiresAt: null, error: NETWORK_WARNING };
+            return {
+                valid: null,
+                expiresAt: null,
+                error: error.response?.data?.error?.message ?? NETWORK_WARNING
+            };
 
         }
 
@@ -94,7 +98,7 @@ class MetaTokenService {
 
     async prepareForSave(token) {
 
-        let status = await this.inspect(token);
+        const status = await this.inspect(token);
 
         if (status.valid === false) {
 
@@ -114,7 +118,7 @@ class MetaTokenService {
 
         }
 
-        let result = token;
+        let result = null;
 
         try {
 
@@ -134,21 +138,47 @@ class MetaTokenService {
 
             });
 
-            result = response.access_token;
+            result = response?.access_token ?? null;
 
         } catch (error) {
+
+            result = null;
+
+        }
+
+        if (!result) {
 
             return { token, status, warning: NETWORK_WARNING };
 
         }
 
-        status = await this.inspect(result);
+        const renewed = await this.inspect(result);
 
-        const warning = this.expiresSoon(status, EXCHANGE_BELOW_DAYS)
+        if (renewed.valid === false) {
+
+            return {
+                token,
+                status,
+                warning: `El token alargado no es válido (${renewed.error}); se conserva el original`
+            };
+
+        }
+
+        if (renewed.valid === null) {
+
+            return {
+                token: result,
+                status,
+                warning: `No se ha podido validar el token alargado (${renewed.error})`
+            };
+
+        }
+
+        const warning = this.expiresSoon(renewed, EXCHANGE_BELOW_DAYS)
             ? "El token caduca en menos de 7 días y no se ha podido alargar"
             : null;
 
-        return { token: result, status, warning };
+        return { token: result, status: renewed, warning };
 
     }
 
@@ -157,6 +187,8 @@ class MetaTokenService {
         const checkedAt = this.now();
 
         const metaTokens = {};
+
+        const previous = this.status();
 
         const targets = [
             ["instagram", this.settings.secret("instagramAccessToken")],
@@ -173,9 +205,14 @@ class MetaTokenService {
 
             const status = await this.inspect(token);
 
-            metaTokens[name] = { ...status, checkedAt };
+            if (status.valid === null) {
 
-            if (status.valid === false || this.expiresSoon(status, WARN_BELOW_DAYS)) {
+                // Inconclusive: keep the last known expiry
+                status.expiresAt = previous[name]?.expiresAt ?? null;
+
+                console.warn(`Meta ${name} token could not be checked: ${status.error}`);
+
+            } else if (status.valid === false || this.expiresSoon(status, WARN_BELOW_DAYS)) {
 
                 console.warn(
                     `Meta ${name} token needs attention: ` +
@@ -183,6 +220,8 @@ class MetaTokenService {
                 );
 
             }
+
+            metaTokens[name] = { ...status, checkedAt };
 
         }
 
@@ -192,12 +231,13 @@ class MetaTokenService {
 
     start(intervalHours = 24) {
 
-        this.checkAll().catch((error) => console.warn(`Meta token check failed: ${error.message}`));
-
-        setInterval(
-            () => this.checkAll().catch((error) => console.warn(`Meta token check failed: ${error.message}`)),
-            intervalHours * 3600 * 1000
+        const run = () => this.checkAll().catch(
+            (error) => console.warn(`Meta token check failed: ${error.message}`)
         );
+
+        run();
+
+        setInterval(run, intervalHours * 3600 * 1000).unref();
 
     }
 
@@ -209,8 +249,14 @@ class MetaTokenService {
 
     expiresSoon(status, days) {
 
-        return status.expiresAt !== null &&
-            status.expiresAt - this.now() < days * DAY_MS;
+        if (status.expiresAt === null) {
+
+            // null means "never expires" only for a valid token
+            return status.valid !== true;
+
+        }
+
+        return status.expiresAt - this.now() < days * DAY_MS;
 
     }
 

@@ -236,3 +236,142 @@ test("checkAll skips the facebook token when absent", async () => {
     assert.strictEqual(service.status().facebook, undefined);
 
 });
+
+const metaError = (message) => Object.assign(new Error("400"), {
+    response: { data: { error: { message } } }
+});
+
+const soonExp = Math.floor((NOW + 2 * HOUR) / 1000);
+
+test("prepareForSave surfaces Meta's message on a 4xx from debug_token", async () => {
+
+    const http = makeHttp({ debug: [metaError("Invalid app secret")] });
+
+    const service = new MetaTokenService({ settings: makeSettings(APP), http, now: () => NOW });
+
+    const result = await service.prepareForSave("tok");
+
+    assert.strictEqual(result.token, "tok");
+
+    assert.match(result.warning, /Invalid app secret/);
+
+});
+
+test("inspect reports a network error without Meta body", async () => {
+
+    const http = makeHttp({ debug: [new Error("timeout")] });
+
+    const service = new MetaTokenService({ settings: makeSettings(APP), http, now: () => NOW });
+
+    assert.deepStrictEqual(await service.inspect("tok"), {
+        valid: null,
+        expiresAt: null,
+        error: "No se ha podido validar con Meta"
+    });
+
+});
+
+test("prepareForSave keeps the original token when the exchange has no access_token", async () => {
+
+    const http = makeHttp({ debug: [debugData({ expires_at: soonExp })], exchange: {} });
+
+    const service = new MetaTokenService({ settings: makeSettings(APP), http, now: () => NOW });
+
+    const result = await service.prepareForSave("short");
+
+    assert.strictEqual(result.token, "short");
+
+    assert.ok(result.warning);
+
+});
+
+test("prepareForSave keeps the original token when the extended one is invalid", async () => {
+
+    const http = makeHttp({
+        debug: [
+            debugData({ expires_at: soonExp }),
+            { data: { is_valid: false, error: { message: "Bad long token" } } }
+        ]
+    });
+
+    const service = new MetaTokenService({ settings: makeSettings(APP), http, now: () => NOW });
+
+    const result = await service.prepareForSave("short");
+
+    assert.strictEqual(result.token, "short");
+
+    assert.match(result.warning, /Bad long token/);
+
+});
+
+test("prepareForSave returns the new token when it cannot validate it", async () => {
+
+    const http = makeHttp({ debug: [debugData({ expires_at: soonExp }), new Error("down")] });
+
+    const service = new MetaTokenService({ settings: makeSettings(APP), http, now: () => NOW });
+
+    const result = await service.prepareForSave("short");
+
+    assert.strictEqual(result.token, "long");
+
+    assert.ok(result.warning);
+
+    assert.strictEqual(result.status.expiresAt, soonExp * 1000);
+
+});
+
+test("checkAll warns for near expiry and invalid tokens but not for far expiry", async (t) => {
+
+    const warn = t.mock.method(console, "warn", () => {});
+
+    const run = async (response) => {
+
+        const before = warn.mock.callCount();
+
+        const service = new MetaTokenService({
+            settings: makeSettings({ ...APP, instagramAccessToken: "ig" }),
+            http: makeHttp({ debug: [response] }),
+            now: () => NOW
+        });
+
+        await service.checkAll();
+
+        return warn.mock.callCount() - before;
+
+    };
+
+    assert.strictEqual(await run(debugData({ expires_at: Math.floor((NOW + 10 * DAY) / 1000) })), 1);
+
+    assert.strictEqual(await run({ data: { is_valid: false, error: { message: "x" } } }), 1);
+
+    assert.strictEqual(await run(debugData({ expires_at: Math.floor((NOW + 60 * DAY) / 1000) })), 0);
+
+});
+
+test("checkAll keeps the last known expiry when the check is inconclusive", async (t) => {
+
+    const warn = t.mock.method(console, "warn", () => {});
+
+    const exp = Math.floor((NOW + 60 * DAY) / 1000);
+
+    const settings = makeSettings({ ...APP, instagramAccessToken: "ig" });
+
+    const http = makeHttp({ debug: [debugData({ expires_at: exp }), new Error("down")] });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    await service.checkAll();
+
+    const status = service.status().instagram;
+
+    assert.strictEqual(status.valid, null);
+
+    assert.strictEqual(status.expiresAt, exp * 1000);
+
+    assert.strictEqual(status.error, "No se ha podido validar con Meta");
+
+    assert.strictEqual(warn.mock.callCount(), 1);
+
+});
