@@ -6,6 +6,13 @@ const LogoService = require("./LogoService");
 const CacheService = require("./CacheService");
 const defaultSettings = require("./settings");
 
+// Shared by the metric cache and the alert service.
+function channelKey(channel) {
+
+    return "metric:" + JSON.stringify(channel);
+
+}
+
 class DashboardService {
 
     constructor(settings = defaultSettings) {
@@ -168,8 +175,7 @@ class DashboardService {
 
     async fetchMetric(provider, channel) {
 
-        const cacheKey =
-            "metric:" + JSON.stringify(channel);
+        const cacheKey = channelKey(channel);
 
         const cached =
             this.cache.get(cacheKey);
@@ -347,3 +353,5 @@ class DashboardService {
 }
 
 module.exports = DashboardService;
+
+module.exports.channelKey = channelKey;

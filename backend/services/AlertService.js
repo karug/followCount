@@ -1,5 +1,7 @@
 const { WARN_BELOW_DAYS } = require("./MetaTokenService");
 
+const { channelKey } = require("./DashboardService");
+
 const DAY_MS = 24 * 3600 * 1000;
 
 const CHANNEL_FAILING_MS = 24 * 3600 * 1000;
@@ -74,7 +76,7 @@ class AlertService {
             for (const channel of project.channels ?? []) {
 
                 const health = this.dashboard.channelHealth.get(
-                    "metric:" + JSON.stringify(channel)
+                    channelKey(channel)
                 );
 
                 if (
