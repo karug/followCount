@@ -4,16 +4,15 @@ const path = require("path");
 const ProviderFactory = require("./ProviderFactory");
 const LogoService = require("./LogoService");
 const CacheService = require("./CacheService");
+const defaultSettings = require("./settings");
 
 class DashboardService {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
-        this.config = null;
+        this.settings = settings;
 
-        this.configModified = 0;
-
-        this.providers = new ProviderFactory();
+        this.providers = new ProviderFactory(settings);
 
         this.logoService = new LogoService();
 
@@ -24,6 +23,21 @@ class DashboardService {
         // Persisted so a restart during a rate-limit window still
         // has values to show.
         this.lastGood = new Map();
+
+        // Per-channel failure tracking, keyed like the metric cache.
+        this.channelHealth = new Map();
+
+        // A config or secret edit must show on the next build, not
+        // after the cache expires.
+        this.settings.on("change", changed => {
+
+            if (changed.includes("config") || changed.includes("secrets")) {
+
+                this.cache.clear();
+
+            }
+
+        });
 
         // Not under cache/: that directory is served publicly at
         // /cache for logos.
@@ -36,9 +50,13 @@ class DashboardService {
 
     }
 
-    async initialize() {
+    get config() {
 
-        this.loadConfiguration();
+        return this.settings.config();
+
+    }
+
+    async initialize() {
 
         this.loadLastGood();
 
@@ -86,55 +104,6 @@ class DashboardService {
 
     }
 
-    loadConfiguration() {
-
-        const configFile = path.join(
-            __dirname,
-            "..",
-            "config.json"
-        );
-
-        const modified =
-            fs.statSync(configFile).mtimeMs;
-
-        if (this.config && modified === this.configModified) {
-
-            return;
-
-        }
-
-        try {
-
-            this.config = JSON.parse(
-                fs.readFileSync(configFile, "utf8")
-            );
-
-            this.configModified = modified;
-
-            console.log("Configuration loaded.");
-
-        } catch (error) {
-
-            // Keep serving the previous configuration if the new
-            // file is invalid (e.g. saved mid-edit).
-            if (this.config) {
-
-                console.warn(
-                    `Invalid config.json, keeping previous configuration: ${error.message}`
-                );
-
-                this.configModified = modified;
-
-                return;
-
-            }
-
-            throw error;
-
-        }
-
-    }
-
     async build() {
 
         const cacheKey = "dashboard";
@@ -146,8 +115,6 @@ class DashboardService {
             return cached;
 
         }
-
-        this.loadConfiguration();
 
         const projects = [];
 
@@ -230,6 +197,8 @@ class DashboardService {
 
         } catch (error) {
 
+            this.recordFailure(cacheKey, error);
+
             const stale =
                 this.lastGood.get(cacheKey);
 
@@ -274,9 +243,33 @@ class DashboardService {
 
         this.lastGood.set(cacheKey, metric);
 
+        this.recordSuccess(cacheKey);
+
         this.saveLastGood();
 
         return metric;
+
+    }
+
+    recordSuccess(cacheKey) {
+
+        this.channelHealth.set(cacheKey, {
+            failingSince: null,
+            lastError: this.channelHealth.get(cacheKey)?.lastError ?? null,
+            lastSuccessAt: Date.now()
+        });
+
+    }
+
+    recordFailure(cacheKey, error) {
+
+        const previous = this.channelHealth.get(cacheKey);
+
+        this.channelHealth.set(cacheKey, {
+            failingSince: previous?.failingSince ?? Date.now(),
+            lastError: error.message,
+            lastSuccessAt: previous?.lastSuccessAt ?? null
+        });
 
     }
 

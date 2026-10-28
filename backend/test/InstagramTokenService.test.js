@@ -5,84 +5,64 @@ const path = require("node:path");
 const fs = require("node:fs");
 
 const InstagramTokenService = require("../services/InstagramTokenService");
+const Http = require("../utils/Http");
+const { SettingsService } = require("../services/SettingsService");
 
-function makeService() {
+function makeService(secrets = {}) {
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "token-settings-"));
+
+    const legacyConfigFile = path.join(dir, "config.json");
+
+    fs.writeFileSync(legacyConfigFile, JSON.stringify({ projects: [] }));
+
+    const settings = new SettingsService({
+        file: path.join(dir, "settings.json"),
+        legacyConfigFile,
+        legacyTokenFile: path.join(dir, "none.json"),
+        env: {}
+    });
+
+    settings.load();
+
+    settings.update({ secrets });
 
     const Service = InstagramTokenService.constructor;
 
-    const service = new Service();
-
-    service.tokenFile = path.join(
-        os.tmpdir(),
-        `followcount-token-test-${process.pid}-${Math.random()}.json`
-    );
-
-    return service;
+    return { settings, service: new Service(settings) };
 
 }
 
-test("load() falls back to env var when no token file exists", () => {
+test("getToken() reads the token from settings", () => {
 
-    const service = makeService();
+    const { settings, service } = makeService({ instagramAccessToken: "t1" });
 
-    process.env.INSTAGRAM_ACCESS_TOKEN = "env-token";
+    assert.strictEqual(service.getToken(), "t1");
 
-    service.load();
+    settings.update({ secrets: { instagramAccessToken: "t2" } });
 
-    assert.strictEqual(service.getToken(), "env-token");
-
-    delete process.env.INSTAGRAM_ACCESS_TOKEN;
-
-});
-
-test("load() prefers a persisted token over the env var", () => {
-
-    const service = makeService();
-
-    fs.writeFileSync(
-        service.tokenFile,
-        JSON.stringify({ token: "persisted-token", refreshedAt: "x" })
-    );
-
-    process.env.INSTAGRAM_ACCESS_TOKEN = "env-token";
-
-    service.load();
-
-    assert.strictEqual(service.getToken(), "persisted-token");
-
-    delete process.env.INSTAGRAM_ACCESS_TOKEN;
-
-    fs.rmSync(service.tokenFile, { force: true });
+    assert.strictEqual(service.getToken(), "t2");
 
 });
 
 test("refresh() is a no-op without app id/secret", async () => {
 
-    const service = makeService();
-
-    service.token = "some-token";
-
-    service.appId = null;
-
-    service.appSecret = null;
+    const { settings, service } = makeService({ instagramAccessToken: "some-token" });
 
     const refreshed = await service.refresh();
 
     assert.strictEqual(refreshed, false);
 
-    assert.strictEqual(service.token, "some-token");
+    assert.strictEqual(settings.secret("instagramAccessToken"), "some-token");
 
 });
 
 test("refresh() is a no-op without a token to exchange", async () => {
 
-    const service = makeService();
-
-    service.token = null;
-
-    service.appId = "id";
-
-    service.appSecret = "secret";
+    const { service } = makeService({
+        facebookAppId: "id",
+        facebookAppSecret: "secret"
+    });
 
     const refreshed = await service.refresh();
 
@@ -90,15 +70,36 @@ test("refresh() is a no-op without a token to exchange", async () => {
 
 });
 
+test("refresh() stores the renewed token in settings", async t => {
+
+    const { settings, service } = makeService({
+        instagramAccessToken: "old",
+        facebookAppId: "id",
+        facebookAppSecret: "secret"
+    });
+
+    t.mock.method(Http, "getJson", async () => ({
+        access_token: "new",
+        expires_in: 100
+    }));
+
+    const refreshed = await service.refresh();
+
+    assert.strictEqual(refreshed, true);
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "new");
+
+    assert.ok(service.lastRefreshAt);
+
+});
+
 test("status() reports configuration and last error", () => {
 
-    const service = makeService();
-
-    service.token = "x";
-
-    service.appId = "id";
-
-    service.appSecret = "secret";
+    const { service } = makeService({
+        instagramAccessToken: "x",
+        facebookAppId: "id",
+        facebookAppSecret: "secret"
+    });
 
     service.lastError = "boom";
 

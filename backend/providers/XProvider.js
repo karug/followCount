@@ -1,11 +1,18 @@
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
+const defaultSettings = require("../services/settings");
 
 class XProvider {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
-        this.bearerToken = process.env.X_BEARER_TOKEN ?? null;
+        this.settings = settings;
+
+    }
+
+    get bearerToken() {
+
+        return this.settings.secret("xBearerToken");
 
     }
 

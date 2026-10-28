@@ -1,23 +1,31 @@
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
+const defaultSettings = require("../services/settings");
 
 class YoutubeProvider {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
-        this.apiKey = process.env.YOUTUBE_API_KEY;
+        this.settings = settings;
 
-        if (!this.apiKey) {
+    }
 
-            throw new Error(
-                "Missing YOUTUBE_API_KEY in .env"
-            );
+    // Read live so a key changed from the admin panel applies at once.
+    get apiKey() {
 
-        }
+        return this.settings.secret("youtubeApiKey");
 
     }
 
     async fetch(channel) {
+
+        if (!this.apiKey) {
+
+            throw new Error(
+                "Missing YouTube API key in settings"
+            );
+
+        }
 
         const response = await Http.getJson(
 

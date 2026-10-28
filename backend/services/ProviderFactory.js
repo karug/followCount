@@ -6,19 +6,21 @@ const TwitchProvider = require("../providers/TwitchProvider");
 const XProvider = require("../providers/XProvider");
 const FacebookProvider = require("../providers/FacebookProvider");
 
+const defaultSettings = require("./settings");
+
 class ProviderFactory {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
         this.providers = new Map();
 
-        this.register("youtube", new YoutubeProvider());
-        this.register("github", new GithubProvider());
-        this.register("instagram", new InstagramProvider());
+        this.register("youtube", new YoutubeProvider(settings));
+        this.register("github", new GithubProvider(settings));
+        this.register("instagram", new InstagramProvider(settings));
         this.register("tiktok", new TikTokProvider());
-        this.register("twitch", new TwitchProvider());
-        this.register("x", new XProvider());
-        this.register("facebook", new FacebookProvider());
+        this.register("twitch", new TwitchProvider(settings));
+        this.register("x", new XProvider(settings));
+        this.register("facebook", new FacebookProvider(settings));
 
     }
 

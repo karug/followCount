@@ -1,7 +1,5 @@
-const fs = require("fs");
-const path = require("path");
-
 const Http = require("../utils/Http");
+const defaultSettings = require("./settings");
 
 /**
  * Meta long-lived tokens last 60 days but can be refreshed
@@ -13,22 +11,9 @@ const Http = require("../utils/Http");
  */
 class InstagramTokenService {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
-        // Not under cache/: that directory is served publicly at
-        // /cache for logos, and this file holds a live credential.
-        this.tokenFile = path.join(
-            __dirname,
-            "..",
-            "state",
-            "instagram-token.json"
-        );
-
-        this.appId = process.env.FACEBOOK_APP_ID ?? null;
-
-        this.appSecret = process.env.FACEBOOK_APP_SECRET ?? null;
-
-        this.token = null;
+        this.settings = settings;
 
         this.lastRefreshAt = null;
 
@@ -36,30 +21,21 @@ class InstagramTokenService {
 
     }
 
-    load() {
+    get appId() {
 
-        try {
+        return this.settings.secret("facebookAppId");
 
-            const stored = JSON.parse(
-                fs.readFileSync(this.tokenFile, "utf8")
-            );
+    }
 
-            this.token = stored.token;
+    get appSecret() {
 
-            this.lastRefreshAt = stored.refreshedAt ?? null;
-
-        } catch (error) {
-
-            this.token =
-                process.env.INSTAGRAM_ACCESS_TOKEN ?? null;
-
-        }
+        return this.settings.secret("facebookAppSecret");
 
     }
 
     getToken() {
 
-        return this.token;
+        return this.settings.secret("instagramAccessToken");
 
     }
 
@@ -67,7 +43,7 @@ class InstagramTokenService {
 
         return {
 
-            hasToken: Boolean(this.token),
+            hasToken: Boolean(this.getToken()),
 
             autoRefreshConfigured:
                 Boolean(this.appId && this.appSecret),
@@ -97,7 +73,9 @@ class InstagramTokenService {
 
     async refresh() {
 
-        if (!this.token) {
+        const token = this.getToken();
+
+        if (!token) {
 
             return false;
 
@@ -125,20 +103,20 @@ class InstagramTokenService {
 
                         client_secret: this.appSecret,
 
-                        fb_exchange_token: this.token
+                        fb_exchange_token: token
 
                     }
 
                 }
             );
 
-            this.token = response.access_token;
+            this.settings.update({
+                secrets: { instagramAccessToken: response.access_token }
+            });
 
             this.lastRefreshAt = new Date().toISOString();
 
             this.lastError = null;
-
-            this.persist();
 
             console.log(
                 "Instagram/Facebook token refreshed, expires in " +
@@ -163,26 +141,6 @@ class InstagramTokenService {
             return false;
 
         }
-
-    }
-
-    persist() {
-
-        fs.mkdirSync(
-            path.dirname(this.tokenFile),
-            { recursive: true }
-        );
-
-        fs.writeFileSync(
-            this.tokenFile,
-            JSON.stringify({
-
-                token: this.token,
-
-                refreshedAt: this.lastRefreshAt
-
-            })
-        );
 
     }
 

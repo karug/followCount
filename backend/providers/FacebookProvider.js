@@ -1,18 +1,24 @@
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
-const TokenService = require("../services/InstagramTokenService");
+const defaultSettings = require("../services/settings");
 
 class FacebookProvider {
 
-    // FACEBOOK_ACCESS_TOKEN is only needed for a token with
+    constructor(settings = defaultSettings) {
+
+        this.settings = settings;
+
+    }
+
+    // facebookAccessToken is only needed for a token with
     // different permissions than the Instagram one; the shared,
     // auto-refreshing token already covers pages_read_engagement
     // so it works here too when no dedicated token is set.
     get accessToken() {
 
         return (
-            process.env.FACEBOOK_ACCESS_TOKEN ??
-            TokenService.getToken()
+            this.settings.secret("facebookAccessToken") ??
+            this.settings.secret("instagramAccessToken")
         );
 
     }

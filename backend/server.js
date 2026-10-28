@@ -4,6 +4,7 @@ const express = require("express");
 const path = require("path");
 
 const DashboardService = require("./services/DashboardService");
+const settings = require("./services/settings");
 const InstagramTokenService = require("./services/InstagramTokenService");
 const KioskMonitor = require("./services/KioskMonitor");
 
@@ -159,7 +160,7 @@ async function start() {
 
     try {
 
-        InstagramTokenService.load();
+        settings.load();
 
         // Refreshes the token every 48h so a 60-day expiry is
         // never reached; a hard invalidation (password change,
