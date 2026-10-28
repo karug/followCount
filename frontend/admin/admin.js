@@ -381,9 +381,9 @@ function renderStatus(box, status) {
 
     box.replaceChildren(
         h("h2", {}, "Estado"),
-        alerts.length === 0
-            ? h("p", { class: "good" }, "Sin alertas.")
-            : alerts.map(code => h("p", { class: "alert" }, ALERT_TEXTS[code] ?? `Alerta: ${code}`)),
+        ...(alerts.length === 0
+            ? [h("p", { class: "good" }, "Sin alertas.")]
+            : alerts.map(code => h("p", { class: "alert" }, ALERT_TEXTS[code] ?? `Alerta: ${code}`))),
 
         h("h3", {}, "Kiosko"),
         h("dl", {},
@@ -393,8 +393,8 @@ function renderStatus(box, status) {
         ),
 
         h("h3", {}, "Tokens de Meta"),
-        tokens.length === 0
-            ? h("p", { class: "message" }, "Sin tokens de Meta.")
+        ...(tokens.length === 0
+            ? [h("p", { class: "message" }, "Sin tokens de Meta.")]
             : tokens.map(([name, token]) => h("dl", {},
                 row(tokenName(name),
                     token.valid === true ? "Válido" : token.valid === false ? "No válido" : "Sin comprobar",
@@ -403,7 +403,7 @@ function renderStatus(box, status) {
                     ? `caduca el ${formatDay(token.expiresAt)}`
                     : token.valid === true ? "no caduca" : "—"),
                 row("Último error", token.error ?? "ninguno")
-            )),
+            ))),
 
         h("h3", {}, "Raspberry Pi"),
         h("dl", {},
@@ -619,7 +619,7 @@ function renderProjects(savedNote = "") {
 
     box.replaceChildren(
         h("h2", {}, "Proyectos y cuentas"),
-        draft.projects.map(renderProject),
+        ...draft.projects.map(renderProject),
         h("div", { class: "actions" },
             h("button", {
                 type: "button",
@@ -771,7 +771,7 @@ function renderSecrets(secrets, savedNote = "", savedWarnings = []) {
     box.replaceChildren(
         h("h2", {}, "Tokens y claves"),
         h("p", { class: "message" }, "Deja vacío lo que no quieras cambiar."),
-        fields,
+        ...fields,
         h("div", { class: "actions" }, h("button", {
             type: "button",
             onclick: () => {
