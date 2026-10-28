@@ -36,6 +36,21 @@ function createApp({
 
     /*
     |--------------------------------------------------------------------------
+    | Admin panel page
+    |--------------------------------------------------------------------------
+    */
+    // Explicit route so /admin (no trailing slash) serves the page
+    // instead of a redirect or the kiosk SPA fallback.
+    app.get("/admin", (req, res) => {
+
+        res.sendFile(
+            path.join(__dirname, "../frontend/admin/index.html")
+        );
+
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | Static frontend
     |--------------------------------------------------------------------------
     */
