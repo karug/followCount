@@ -5,8 +5,10 @@ const path = require("path");
 
 const DashboardService = require("./services/DashboardService");
 const settings = require("./services/settings");
-const InstagramTokenService = require("./services/InstagramTokenService");
+const MetaTokenService = require("./services/MetaTokenService");
 const KioskMonitor = require("./services/KioskMonitor");
+
+const metaTokens = new MetaTokenService({ settings });
 
 const app = express();
 
@@ -72,7 +74,7 @@ app.get("/api/health", (req, res) => {
     res.json({
         status: "UP",
         timestamp: new Date().toISOString(),
-        instagramToken: InstagramTokenService.status(),
+        metaTokens: metaTokens.status(),
         kiosk: kioskMonitor.status()
     });
 
@@ -162,10 +164,8 @@ async function start() {
 
         settings.load();
 
-        // Refreshes the token every 48h so a 60-day expiry is
-        // never reached; a hard invalidation (password change,
-        // logout elsewhere) still needs a manual new token.
-        InstagramTokenService.start(48);
+        // Checks the real expiry of the Meta tokens once a day.
+        metaTokens.start(24);
 
         await dashboardService.initialize();
 
