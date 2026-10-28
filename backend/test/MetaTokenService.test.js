@@ -397,3 +397,30 @@ test("prepareForSave y inspect dan prioridad a las credenciales pasadas", async 
     assert.strictEqual(exchange.params.client_secret, "newSecret");
 
 });
+
+test("checkAll no guarda el estado de un token que ya fue sustituido", async () => {
+
+    const settings = makeSettings({ ...APP, instagramAccessToken: "old" });
+
+    const http = makeHttp({ debug: [debugData({ expires_at: 0 })] });
+
+    // Replace the token while the check for the old one is in flight
+    const getJson = http.getJson.bind(http);
+
+    http.getJson = async (url, options) => {
+
+        const result = await getJson(url, options);
+
+        settings.update({ secrets: { instagramAccessToken: "new" } });
+
+        return result;
+
+    };
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.strictEqual(service.status().instagram, undefined);
+
+});

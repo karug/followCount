@@ -9,6 +9,11 @@ const EXCHANGE_BELOW_DAYS = 7;
 
 const WARN_BELOW_DAYS = 14;
 
+const SECRET_BY_TARGET = {
+    instagram: "instagramAccessToken",
+    facebook: "facebookAccessToken"
+};
+
 const NETWORK_WARNING = "No se ha podido validar con Meta";
 
 /**
@@ -233,6 +238,19 @@ class MetaTokenService {
                     `Meta ${name} token needs attention: ` +
                     (status.error ?? `expires at ${new Date(status.expiresAt).toISOString()}`)
                 );
+
+            }
+
+            if (this.settings.secret(SECRET_BY_TARGET[name]) !== token) {
+
+                // The token was replaced while checking: keep whatever is stored now
+                const current = this.status()[name];
+
+                if (current) {
+                    metaTokens[name] = current;
+                }
+
+                continue;
 
             }
 

@@ -311,3 +311,49 @@ test("settings.json se escribe con modo 0600 fuera de Windows", { skip: process.
     assert.strictEqual(fs.statSync(file).mode & 0o777, 0o600);
 
 });
+
+test("una config migrada inválida avisa pero no bloquea otros bloques", (t) => {
+
+    const warn = t.mock.method(console, "warn", () => {});
+
+    const dir = tempDir();
+
+    const invalid = {
+        ...threeProjects,
+        projects: [{ name: "X", channels: [{ type: "youtube" }] }]
+    };
+
+    const { service } = makeService(dir, { legacyConfig: invalid });
+
+    service.load();
+
+    assert.ok(warn.mock.callCount() > 0);
+
+    service.update({ admin: { passwordHash: "hash" } });
+
+    service.update({ secrets: { youtubeApiKey: "k" } });
+
+    assert.strictEqual(service.admin().passwordHash, "hash");
+
+    assert.throws(
+        () => service.update({ config: invalid }),
+        error => error instanceof ValidationError
+    );
+
+});
+
+test("el error de un settings.json corrupto no incluye su contenido", () => {
+
+    const dir = tempDir();
+
+    const { service, file } = makeService(dir, { legacyConfig: threeProjects });
+
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '{"secrets": {"githubToken": "SUPERSECRETO123" oops}}');
+
+    assert.throws(
+        () => service.load(),
+        error => error.message.includes(file) && !error.message.includes("SUPERSECRETO123")
+    );
+
+});

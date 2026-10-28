@@ -7,7 +7,7 @@ const THRESHOLD_MULTIPLIER = 3;
 class KioskMonitor {
 
     // timing: () => ({ slideSeconds, refreshSeconds }), read on every
-    // call because config.json is hot-reloaded.
+    // call because the settings can change at runtime.
     constructor(timing = () => ({}), now = () => Date.now()) {
 
         this.timing = timing;

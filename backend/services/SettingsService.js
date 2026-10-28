@@ -172,6 +172,12 @@ class SettingsService extends EventEmitter {
 
             this.data = this.migrate();
 
+            const problems = validateConfig(this.data.config);
+
+            if (problems.length > 0) {
+                console.warn(`Migrated config.json has problems: ${problems.join("; ")}`);
+            }
+
             this.write(this.data);
 
             return;
@@ -183,11 +189,20 @@ class SettingsService extends EventEmitter {
         try {
             parsed = JSON.parse(fs.readFileSync(this.file, "utf8"));
         } catch (error) {
-            throw new Error(`settings.json is invalid: ${error.message}`);
+            // Never echo error.message: Node includes a slice of the file, which may hold secrets
+            const position = /position \d+(?: \(line \d+ column \d+\))?/.exec(error.message);
+
+            throw new Error(`${this.file} is invalid JSON${position ? ` (${position[0]})` : ""}`);
         }
 
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
             throw new Error("settings.json is invalid: root must be an object");
+        }
+
+        const loadProblems = validateConfig(parsed.config || {});
+
+        if (loadProblems.length > 0) {
+            console.warn(`settings.json config has problems: ${loadProblems.join("; ")}`);
         }
 
         this.data = {
@@ -274,10 +289,14 @@ class SettingsService extends EventEmitter {
 
         }
 
-        const errors = validateConfig(next.config);
+        if (patch.config !== undefined) {
 
-        if (errors.length > 0) {
-            throw new ValidationError(errors);
+            const errors = validateConfig(next.config);
+
+            if (errors.length > 0) {
+                throw new ValidationError(errors);
+            }
+
         }
 
         this.write(next);
