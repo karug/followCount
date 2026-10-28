@@ -1,8 +1,71 @@
 const express = require("express");
 
+const { SECRET_NAMES, ValidationError } = require("../services/SettingsService");
+const { channelKey } = require("../services/DashboardService");
+
 const MIN_PASSWORD_LENGTH = 8;
 
-function createAdminRouter({ settings, auth }) {
+const META_SECRETS = ["instagramAccessToken", "facebookAccessToken"];
+
+// 12 characters or fewer would leak most of the secret if shown.
+function mask(value) {
+
+    if (value === null) {
+
+        return { set: false, masked: null };
+
+    }
+
+    return {
+        set: true,
+        masked: value.length <= 12 ? "••••" : `${value.slice(0, 4)}…${value.slice(-4)}`
+    };
+
+}
+
+function maskedSecrets(settings) {
+
+    return Object.fromEntries(
+        SECRET_NAMES.map(name => [name, mask(settings.secret(name))])
+    );
+
+}
+
+// Express 4 does not catch rejected promises: never leave a request hanging.
+function asyncRoute(handler) {
+
+    return async (req, res) => {
+
+        try {
+
+            await handler(req, res);
+
+        } catch (error) {
+
+            console.error(error);
+
+            if (!res.headersSent) {
+
+                res.status(500).json({ error: "internal" });
+
+            }
+
+        }
+
+    };
+
+}
+
+function createAdminRouter({
+    settings,
+    auth,
+    dashboardService,
+    metaTokens,
+    kioskMonitor,
+    alertService,
+    systemStatus,
+    systemActions
+}) {
 
     const router = express.Router();
 
@@ -59,7 +122,7 @@ function createAdminRouter({ settings, auth }) {
 
     });
 
-    router.post("/login", async (req, res) => {
+    router.post("/login", asyncRoute(async (req, res) => {
 
         const stored = settings.admin().passwordHash;
 
@@ -73,7 +136,7 @@ function createAdminRouter({ settings, auth }) {
 
         res.json({ ok: true });
 
-    });
+    }));
 
     router.post("/logout", (req, res) => {
 
@@ -82,6 +145,196 @@ function createAdminRouter({ settings, auth }) {
         res.json({ ok: true });
 
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Protected routes
+    |--------------------------------------------------------------------------
+    */
+
+    router.use(auth.requireSession);
+
+    router.get("/settings", (req, res) => {
+
+        res.set("Cache-Control", "no-store");
+
+        res.json({
+            config: settings.config(),
+            secrets: maskedSecrets(settings)
+        });
+
+    });
+
+    router.put("/config", (req, res) => {
+
+        const config = req.body?.config;
+
+        if (config === null || typeof config !== "object" || Array.isArray(config)) {
+
+            return res.status(400).json({ errors: ["Falta el objeto config"] });
+
+        }
+
+        try {
+
+            settings.update({ config });
+
+        } catch (error) {
+
+            if (error instanceof ValidationError) {
+
+                return res.status(400).json({ errors: error.errors });
+
+            }
+
+            throw error;
+
+        }
+
+        res.json(settings.config());
+
+    });
+
+    router.put("/secrets", asyncRoute(async (req, res) => {
+
+        const incoming = req.body?.secrets;
+
+        if (incoming === null || typeof incoming !== "object" || Array.isArray(incoming)) {
+
+            return res.status(400).json({ error: "Falta el objeto secrets" });
+
+        }
+
+        const unknown = Object.keys(incoming).filter(name => !SECRET_NAMES.includes(name));
+
+        if (unknown.length > 0) {
+
+            return res.status(400).json({ error: `Secretos desconocidos: ${unknown.join(", ")}` });
+
+        }
+
+        // "" or absent = unchanged; only an explicit null deletes.
+        const patch = {};
+
+        const warnings = [];
+
+        for (const [name, value] of Object.entries(incoming)) {
+
+            if (value === undefined || value === "") {
+
+                continue;
+
+            }
+
+            if (value !== null && typeof value !== "string") {
+
+                return res.status(400).json({ error: `El secreto ${name} debe ser texto` });
+
+            }
+
+            if (typeof value === "string" && META_SECRETS.includes(name)) {
+
+                try {
+
+                    const prepared = await metaTokens.prepareForSave(value);
+
+                    patch[name] = prepared.token;
+
+                    if (prepared.warning) {
+
+                        warnings.push(prepared.warning);
+
+                    }
+
+                } catch (error) {
+
+                    return res.status(400).json({ error: error.message });
+
+                }
+
+                continue;
+
+            }
+
+            patch[name] = value;
+
+        }
+
+        settings.update({ secrets: patch });
+
+        // Fire and forget: the response must not wait on Meta.
+        Promise.resolve()
+            .then(() => metaTokens.checkAll())
+            .catch(error => console.error(error));
+
+        res.json({ secrets: maskedSecrets(settings), warnings });
+
+    }));
+
+    router.get("/status", asyncRoute(async (req, res) => {
+
+        const channels = [];
+
+        for (const project of settings.config().projects ?? []) {
+
+            for (const channel of project.channels ?? []) {
+
+                const health = dashboardService.channelHealth.get(channelKey(channel));
+
+                channels.push({
+                    project: project.name,
+                    type: channel.type,
+                    id: channel.channelId ?? channel.pageId ?? channel.username ?? null,
+                    lastSuccessAt: health?.lastSuccessAt ?? null,
+                    failingSince: health?.failingSince ?? null,
+                    lastError: health?.lastError ?? null
+                });
+
+            }
+
+        }
+
+        res.set("Cache-Control", "no-store");
+
+        res.json({
+            alerts: await alertService.codes(),
+            kiosk: kioskMonitor.status(),
+            metaTokens: metaTokens.status(),
+            system: await systemStatus.read(),
+            channels
+        });
+
+    }));
+
+    router.post("/actions/:name", asyncRoute(async (req, res) => {
+
+        const name = req.params.name;
+
+        if (!systemActions.knows(name)) {
+
+            return res.status(404).json({ error: "unknown-action" });
+
+        }
+
+        if (!systemActions.available()) {
+
+            return res.status(501).json({ error: "No disponible en este equipo" });
+
+        }
+
+        if (name === "restart-backend") {
+
+            res.on("finish", () => systemActions.scheduleExit());
+
+            return res.status(202).json({ ok: true });
+
+        }
+
+        await systemActions.execute(name);
+
+        res.json({ ok: true });
+
+    }));
 
     return router;
 

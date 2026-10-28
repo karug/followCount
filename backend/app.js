@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 
 const AdminAuth = require("./services/AdminAuth");
+const SystemActions = require("./services/SystemActions");
 const createAdminRouter = require("./routes/admin");
 
 function createApp({
@@ -10,6 +11,8 @@ function createApp({
     metaTokens,
     kioskMonitor,
     alertService,
+    systemStatus,
+    systemActions = new SystemActions(),
     now = Date.now
 }) {
 
@@ -155,7 +158,16 @@ function createApp({
     |--------------------------------------------------------------------------
     */
 
-    app.use("/api/admin", createAdminRouter({ settings, auth }));
+    app.use("/api/admin", createAdminRouter({
+        settings,
+        auth,
+        dashboardService,
+        metaTokens,
+        kioskMonitor,
+        alertService,
+        systemStatus,
+        systemActions
+    }));
 
     /*
     |--------------------------------------------------------------------------
