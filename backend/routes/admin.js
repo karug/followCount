@@ -6,6 +6,20 @@ function createAdminRouter({ settings, auth }) {
 
     const router = express.Router();
 
+    // Blocks cross-site form posts: browsers can't send JSON
+    // content types from a plain form.
+    router.use((req, res, next) => {
+
+        if (req.method !== "GET" && !req.is("application/json")) {
+
+            return res.status(415).json({ error: "unsupported-media-type" });
+
+        }
+
+        next();
+
+    });
+
     router.get("/session", (req, res) => {
 
         res.set("Cache-Control", "no-store");
@@ -45,11 +59,11 @@ function createAdminRouter({ settings, auth }) {
 
     });
 
-    router.post("/login", (req, res) => {
+    router.post("/login", async (req, res) => {
 
         const stored = settings.admin().passwordHash;
 
-        if (!stored || !auth.verifyPassword(req.body?.password, stored)) {
+        if (!stored || !await auth.verifyPasswordAsync(req.body?.password, stored)) {
 
             return res.status(401).json({ error: "auth" });
 

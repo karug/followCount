@@ -2,8 +2,8 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const { SettingsService } = require("../../services/SettingsService");
-const createApp = require("../../app");
+const { SettingsService } = require("../services/SettingsService");
+const createApp = require("../app");
 
 // Settings over a temp dir, so tests never touch backend/state.
 function tempSettings() {

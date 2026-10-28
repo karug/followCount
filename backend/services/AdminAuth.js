@@ -1,4 +1,11 @@
 const crypto = require("crypto");
+const { promisify } = require("util");
+
+const scrypt = promisify(crypto.scrypt);
+
+const STORED_PATTERN = /^scrypt\$[0-9a-f]{32}\$[0-9a-f]{128}$/;
+
+const SIGNATURE_PATTERN = /^[0-9a-f]{64}$/;
 
 const COOKIE_NAME = "fc_admin";
 
@@ -31,32 +38,54 @@ class AdminAuth {
 
     }
 
+    // Returns the parsed parts, or null when the stored hash is malformed.
+    parseStored(stored) {
+
+        if (typeof stored !== "string" || !STORED_PATTERN.test(stored)) {
+
+            return null;
+
+        }
+
+        const [, saltHex, hashHex] = stored.split("$");
+
+        return {
+            salt: Buffer.from(saltHex, "hex"),
+            expected: Buffer.from(hashHex, "hex")
+        };
+
+    }
+
     verifyPassword(password, stored) {
 
-        if (typeof password !== "string" || typeof stored !== "string") {
+        const parts = this.parseStored(stored);
+
+        if (typeof password !== "string" || !parts) {
 
             return false;
 
         }
 
-        const [scheme, saltHex, hashHex] = stored.split("$");
+        const actual = crypto.scryptSync(password, parts.salt, KEY_BYTES);
 
-        if (scheme !== "scrypt" || !saltHex || !hashHex) {
+        return crypto.timingSafeEqual(actual, parts.expected);
+
+    }
+
+    // Same check without blocking the event loop (used by login).
+    async verifyPasswordAsync(password, stored) {
+
+        const parts = this.parseStored(stored);
+
+        if (typeof password !== "string" || !parts) {
 
             return false;
 
         }
 
-        const expected = Buffer.from(hashHex, "hex");
+        const actual = await scrypt(password, parts.salt, KEY_BYTES);
 
-        const actual = crypto.scryptSync(
-            password,
-            Buffer.from(saltHex, "hex"),
-            expected.length
-        );
-
-        return actual.length === expected.length &&
-            crypto.timingSafeEqual(actual, expected);
+        return crypto.timingSafeEqual(actual, parts.expected);
 
     }
 
@@ -88,7 +117,7 @@ class AdminAuth {
 
         const [exp, signature, extra] = value.split(".");
 
-        if (!/^\d+$/.test(exp ?? "") || !signature || extra !== undefined) {
+        if (!/^\d+$/.test(exp ?? "") || !SIGNATURE_PATTERN.test(signature ?? "") || extra !== undefined) {
 
             return false;
 

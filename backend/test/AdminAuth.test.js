@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert");
 
 const AdminAuth = require("../services/AdminAuth");
-const { startServer, tempSettings } = require("./helpers/server");
+const { startServer, tempSettings } = require("../testing/server");
 
 const NOW = 1_800_000_000_000;
 
@@ -36,6 +36,22 @@ test("hashPassword and verifyPassword round trip", () => {
     assert.strictEqual(auth.verifyPassword("wrong", stored), false);
     assert.strictEqual(auth.verifyPassword("x", "garbage"), false);
     assert.strictEqual(auth.verifyPassword("x", null), false);
+    assert.strictEqual(auth.verifyPassword("whatever", "scrypt$aa$zz"), false);
+    assert.strictEqual(auth.verifyPassword("whatever", "scrypt$$"), false);
+    assert.strictEqual(auth.verifyPassword("whatever", ""), false);
+    assert.strictEqual(auth.verifyPassword("whatever", stored.slice(0, -2)), false);
+
+});
+
+test("verifyPasswordAsync matches verifyPassword", async () => {
+
+    const { settings } = tempSettings();
+    const auth = new AdminAuth({ settings });
+    const stored = auth.hashPassword("correct horse");
+
+    assert.strictEqual(await auth.verifyPasswordAsync("correct horse", stored), true);
+    assert.strictEqual(await auth.verifyPasswordAsync("wrong", stored), false);
+    assert.strictEqual(await auth.verifyPasswordAsync("whatever", "scrypt$aa$zz"), false);
 
 });
 
@@ -221,6 +237,10 @@ test("requireSession rejects missing, expired and tampered cookies", () => {
 
     assert.strictEqual(run(`fc_admin=${Number(exp) + 1000}.${sig}`).status, 401);
     assert.strictEqual(run("fc_admin=garbage").status, 401);
+    assert.strictEqual(run(`fc_admin=${valid}Z`).status, 401);
+    assert.strictEqual(run(`fc_admin=${valid.slice(0, -2)}`).status, 401);
+    assert.strictEqual(run(`fc_admin=${exp}.${sig.slice(0, -1)}g`).status, 401);
+    assert.strictEqual(run(`fc_admin=${exp}.${sig.toUpperCase()}`).status, 401);
 
     now = NOW + TTL_MS + 1;
 
@@ -361,6 +381,32 @@ test("/api/dashboard survives alertService.codes() throwing", async () => {
     } finally {
 
         console.error = originalError;
+
+        await server.close();
+
+    }
+
+});
+
+test("form posts to admin routes get 415 and set no password", async () => {
+
+    const server = await startServer();
+
+    try {
+
+        const response = await fetch(`${server.url}/api/admin/setup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "password=longenough"
+        });
+
+        assert.strictEqual(response.status, 415);
+
+        const session = await (await fetch(`${server.url}/api/admin/session`)).json();
+
+        assert.strictEqual(session.needsSetup, true);
+
+    } finally {
 
         await server.close();
 
