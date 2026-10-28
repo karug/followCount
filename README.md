@@ -25,9 +25,72 @@ npm run dev
 
 Abre <http://localhost:3000>.
 
+## Panel de administración
+
+Proyectos, cuentas, tokens y ajustes se gestionan desde el panel web
+en `/admin`, sin tocar ficheros ni reiniciar nada:
+
+- En la Pi: `http://<ip-de-la-pi>:3000/admin` (en casa,
+  `http://192.168.1.158:3000/admin`).
+- En desarrollo: <http://localhost:3000/admin>.
+
+**Úsalo solo en la red local.** El panel tiene contraseña, pero no
+está pensado para exponerse a Internet: no abras el puerto 3000 en el
+router ni lo publiques detrás de un proxy.
+
+**Primer acceso**: la primera vez, `/admin` pide crear la contraseña
+(mínimo 8 caracteres). Las siguientes veces pide esa contraseña.
+
+El panel tiene cuatro secciones:
+
+- **Estado**: estado del kiosco y de la Pi, alertas activas y
+  botones para reiniciar la pantalla, el backend o la Pi.
+- **Proyectos y cuentas**: proyectos, canales y canal principal de
+  cada uno.
+- **Tokens y claves**: credenciales de YouTube, GitHub, Twitch, X y
+  Meta (Instagram/Facebook). Nunca se muestran enteras; dejar un campo
+  vacío significa "no cambiar".
+- **Ajustes generales**: `refreshSeconds`, `slideSeconds` y
+  `transition`.
+
+Los cambios se aplican en caliente. Todo se guarda en
+`backend/state/settings.json` (fuera de `cache/`, que se sirve
+públicamente), con permisos restringidos y escritura atómica.
+
+**Aviso en el kiosco**: si aparece un icono de aviso ámbar en la
+barra de estado del kiosco, hay alertas activas (por ejemplo, un token
+de Meta inválido o a punto de caducar). Se ven en `/admin` → Estado.
+
+### Migración desde `config.json` y `.env`
+
+`backend/config.json` y `backend/.env` solo sirven para la **primera
+migración**: la primera vez que arranca el backend sin
+`state/settings.json`, lo crea a partir de `config.json`, de las
+variables de `.env` y, si existe, de `state/instagram-token.json` (que
+tiene prioridad para el token de Instagram). A partir de ahí esos
+ficheros se ignoran: edita todo desde `/admin`.
+
+Si `settings.json` existe pero es JSON inválido (p. ej. editado a mano
+por SSH), el backend no arranca y lo dice en el log; no lo
+sobrescribe. Corrige el fichero y reinicia.
+
+### Contraseña olvidada
+
+```bash
+ssh raspiCount
+cd ~/followCount/backend
+nano state/settings.json     # elimina admin.passwordHash
+sudo systemctl restart followcount-backend
+```
+
+Sin `admin.passwordHash`, `/admin` vuelve a pedir la creación de una
+contraseña nueva.
+
 ## Configuración
 
-Proyectos y canales en `backend/config.json`:
+Estructura de la configuración (la que se edita en `/admin`; en la
+primera migración se lee de `backend/config.json` con este mismo
+formato):
 
 ```json
 {
@@ -66,15 +129,15 @@ Proyectos y canales en `backend/config.json`:
   60 peticiones/hora).
 - Facebook admite `username` o `pageId` (id numérico de la página).
 
-Los cambios en `config.json` se recargan en caliente: el servidor
-comprueba la fecha de modificación del fichero en cada refresco del
-dashboard (cada `refreshSeconds`), sin reiniciar. Si el JSON guardado
-es inválido, mantiene la configuración anterior y avisa por log.
+Los cambios guardados en el panel se aplican en caliente, sin
+reiniciar.
 
 ## Credenciales
 
-Solo en `backend/.env` (nunca en `config.json`). Ver
-[backend/.env.example](backend/.env.example):
+Se gestionan en `/admin` → **Tokens y claves** y viven en
+`backend/state/settings.json`, nunca en `config.json`. El
+[backend/.env.example](backend/.env.example) solo sirve para la
+primera migración:
 
 | Variable | Necesaria para | Notas |
 |---|---|---|
@@ -83,8 +146,8 @@ Solo en `backend/.env` (nunca en `config.json`). Ver
 | `TWITCH_CLIENT_ID` / `TWITCH_CLIENT_SECRET` | twitch | App en dev.twitch.tv |
 | `X_BEARER_TOKEN` | x | X API v2 |
 | `INSTAGRAM_ACCESS_TOKEN` | — | Recomendado: cifras exactas vía Graph API en vez de scraping. Ver abajo |
-| `FACEBOOK_ACCESS_TOKEN` | — | Opcional: si no se indica, se reutiliza `INSTAGRAM_ACCESS_TOKEN` (mismo permiso `pages_read_engagement`); sin ninguno de los dos, se usa el widget público (redondea cifras grandes: "154M") |
-| `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | — | Opcional: habilitan el auto-refresco de `INSTAGRAM_ACCESS_TOKEN` (ver abajo) |
+| `FACEBOOK_ACCESS_TOKEN` | — | Opcional: si no se indica, se reutiliza el de Instagram (mismo permiso `pages_read_engagement`); sin ninguno de los dos, se usa el widget público (redondea cifras grandes: "154M") |
+| `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | — | Opcional: permiten al backend comprobar la caducidad real de los tokens de Meta y alargar los de corta duración |
 
 TikTok no requiere credenciales (endpoint público); igual que
 Instagram sin token, puede fallar puntualmente si la plataforma
@@ -93,12 +156,12 @@ el dashboard.
 
 ### Token de Instagram/Facebook (Graph API)
 
-Sin `INSTAGRAM_ACCESS_TOKEN`, Instagram se lee haciendo scraping de
-endpoints públicos: funciona, pero Meta puede bloquear la IP con
-peticiones frecuentes. Con el token, se usa la Graph API oficial:
-cifras exactas, sin bloqueos.
+Sin token de Instagram, se lee haciendo scraping de endpoints
+públicos: funciona, pero Meta puede bloquear la IP con peticiones
+frecuentes. Con el token, se usa la Graph API oficial: cifras
+exactas, sin bloqueos.
 
-**Generar el token inicial** (una vez):
+**Requisitos previos**:
 
 1. Cada cuenta de Instagram debe ser **profesional** (Business o
    Creator, gratis desde la app) y estar vinculada a una página de
@@ -107,45 +170,37 @@ cifras exactas, sin bloqueos.
    discovery*.
 2. Crea una app en <https://developers.facebook.com> → **My Apps →
    Create App** (tipo Business).
-3. Añade el producto **Facebook Login** → Configuración → activa
-   *Client OAuth Login* y *Web OAuth Login*.
-4. Ve al **Graph API Explorer**
-   (<https://developers.facebook.com/tools/explorer>), selecciona tu
-   app, y en **Permisos** añade: `pages_show_list`,
-   `pages_read_engagement`, `instagram_basic`,
+
+**Recomendado: token de usuario del sistema** (no caduca). Un token
+de usuario normal dura 60 días y hay que regenerarlo; el de usuario
+del sistema se genera una vez y no vuelve a tocarse:
+
+1. En el Business Manager → **Configuración del negocio → Usuarios
+   → Usuarios del sistema → Añadir** (rol **Administrador**).
+2. Asígnale la app y los activos: la página de Facebook y la cuenta
+   de Instagram.
+3. **Generar token** con caducidad **Nunca** y los permisos
+   `instagram_basic`, `pages_show_list`, `pages_read_engagement` e
    `instagram_manage_insights` (este último habilita business
    discovery para cuentas no vinculadas directamente).
-5. **Generate Access Token** → en el diálogo de autorización, marca
-   la página y la cuenta de Instagram.
-6. Verifica en la misma consola:
-   `me/accounts?fields=name,instagram_business_account{id,username,followers_count}`
-   — debe devolver tu página con los datos de Instagram.
-7. Cambia el token corto por uno de larga duración (60 días) con tu
-   App ID/Secret (Settings → Basic):
+4. Pégalo en `/admin` → **Tokens y claves**.
 
-   ```
-   https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id=APP_ID&client_secret=APP_SECRET&fb_exchange_token=TOKEN_CORTO
-   ```
-
-8. Guarda el `access_token` resultante en `INSTAGRAM_ACCESS_TOKEN`.
-
-**Auto-refresco**: con `FACEBOOK_APP_ID` y `FACEBOOK_APP_SECRET`
-también en `.env`, el servidor renueva el token cada 48h
-(`fb_exchange_token`, igual que el paso 7) y lo persiste en
-`backend/state/instagram-token.json` (fuera de `cache/`, que se
-sirve públicamente en `/cache/logos`) — nunca llega a los 60 días de
-caducidad y no hace falta reiniciar para que el nuevo token surta
-efecto. Esto **no** protege contra una invalidación explícita
-(cambio de contraseña de Facebook, cierre de sesión en todos los
-dispositivos): en ese caso el token muere igual y hay que repetir
-los pasos 4–8 a mano. `GET /api/health` expone
-`instagramToken: { hasToken, autoRefreshConfigured, lastRefreshAt,
-lastError }` para comprobar el estado sin mirar logs.
+Con el App ID y el App Secret (Meta app → Settings → Basic) también
+guardados en el panel, el backend comprueba cada 24 h la caducidad
+real de los tokens (`debug_token`). Si un token es inválido o caduca
+en menos de 14 días, aparece una alerta en `/admin` → Estado y el
+icono de aviso del kiosco. Un token de corta duración pegado en el
+panel se alarga automáticamente (`fb_exchange_token`) antes de
+guardarlo. Nada protege contra una invalidación explícita (cambio de
+contraseña de Facebook, retirada de la app al usuario del sistema):
+el token deja de valer y hay que generar otro.
 
 ## API
 
-- `GET /api/health` — incluye el estado del token de Instagram y un
-  resumen del latido del kiosco (`kiosk`).
+- `GET /api/health` — incluye `metaTokens` (estado de los tokens de
+  Meta por plataforma, p. ej. `{ instagram: { valid, expiresAt,
+  error, checkedAt }, facebook: {...} }`; vacío si aún no se ha
+  comprobado ninguno) y un resumen del latido del kiosco (`kiosk`).
 - `POST /api/heartbeat` — latido que envía el frontend en cada cambio
   de diapositiva y tras cada refresco; responde 204.
 - `GET /api/kiosk` — `{ lastHeartbeatAt, ageSeconds, thresholdSeconds,
@@ -153,7 +208,7 @@ lastError }` para comprobar el estado sin mirar logs.
   refreshSeconds))`; sin latidos aún, la edad cuenta desde el arranque
   del backend.
 - `GET /api/dashboard` — modelo listo para pintar (proyectos, métricas,
-  logos cacheados en `/cache/logos/`).
+  alertas, logos cacheados en `/cache/logos/`).
 
 ## Vigilante del kiosco (Raspberry Pi)
 
