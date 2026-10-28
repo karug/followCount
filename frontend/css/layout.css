@@ -40,6 +40,21 @@ body {
     opacity: .75;
 }
 
+#alertIcon {
+    display: flex;
+    align-items: center;
+}
+
+#alertIcon[hidden] {
+    display: none;
+}
+
+#alertIcon img {
+    width: 16px;
+    height: 16px;
+    opacity: .85;
+}
+
 #clock {
     font-size: var(--font-md);
     font-weight: var(--weight-semibold);

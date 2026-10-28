@@ -4,13 +4,15 @@ const https = require("https");
 
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
-const TokenService = require("../services/InstagramTokenService");
+const defaultSettings = require("../services/settings");
 
 const execFileAsync = promisify(execFile);
 
 class InstagramProvider {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
+
+        this.settings = settings;
 
         this.agents = {
 
@@ -39,12 +41,11 @@ class InstagramProvider {
 
     }
 
-    // Read live from the shared service instead of caching at
-    // construction, so a background token refresh applies
-    // immediately without restarting the process.
+    // Read live from settings instead of caching at construction,
+    // so a token refresh or an admin edit applies immediately.
     get accessToken() {
 
-        return TokenService.getToken();
+        return this.settings.secret("instagramAccessToken");
 
     }
 

@@ -108,6 +108,8 @@ export default class Dashboard {
             Api.dashboard?.transition ?? 'fade'
         );
 
+        this.#statusBar.setAlerts(Api.dashboard?.alerts ?? []);
+
         this.#projects = Api.projects.map(
             project => new ProjectViewModel(project)
         );
@@ -138,10 +140,13 @@ export default class Dashboard {
 
                 await this.refresh();
 
-                this.#carousel.go(current);
+                // A deleted project can leave the old index out of range.
+                const target = current < this.#projects.length ? current : 0;
+
+                this.#carousel.go(target);
 
                 // Covers decks with a single slide, which never change.
-                this.#sendHeartbeat(current);
+                this.#sendHeartbeat(target);
 
                 this.#carousel.start(
                     this.#slideMilliseconds()
@@ -162,7 +167,7 @@ export default class Dashboard {
         setInterval(() => {
 
             // Recomputed on every tick: refreshSeconds can change
-            // via config.json hot reload, and a threshold fixed at
+            // via a settings change, and a threshold fixed at
             // startup would drift out of sync with it.
             const threshold = Math.max(
                 this.#refreshMilliseconds() * WATCHDOG_MULTIPLIER,

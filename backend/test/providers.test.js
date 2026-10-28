@@ -1,5 +1,3 @@
-process.env.YOUTUBE_API_KEY ??= "test-key";
-
 const test = require("node:test");
 const assert = require("node:assert");
 
@@ -7,6 +5,35 @@ const InstagramProvider = require("../providers/InstagramProvider");
 const FacebookProvider = require("../providers/FacebookProvider");
 const TikTokProvider = require("../providers/TikTokProvider");
 const ProviderFactory = require("../services/ProviderFactory");
+const YoutubeProvider = require("../providers/YoutubeProvider");
+const { SettingsService } = require("../services/SettingsService");
+
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+function makeSettings(secrets = {}) {
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "providers-settings-"));
+
+    const legacyConfigFile = path.join(dir, "config.json");
+
+    fs.writeFileSync(legacyConfigFile, JSON.stringify({ projects: [] }));
+
+    const settings = new SettingsService({
+        file: path.join(dir, "settings.json"),
+        legacyConfigFile,
+        legacyTokenFile: path.join(dir, "none.json"),
+        env: {}
+    });
+
+    settings.load();
+
+    settings.update({ secrets });
+
+    return settings;
+
+}
 
 test("parseCompact handles suffixes and separators", () => {
 
@@ -234,5 +261,46 @@ test("factory registers every configured provider type", () => {
         );
 
     }
+
+});
+
+
+test("YoutubeProvider lee la clave en cada uso", () => {
+
+    const settings = makeSettings({ youtubeApiKey: "k1" });
+
+    const provider = new YoutubeProvider(settings);
+
+    assert.strictEqual(provider.apiKey, "k1");
+
+    settings.update({ secrets: { youtubeApiKey: "k2" } });
+
+    assert.strictEqual(provider.apiKey, "k2");
+
+});
+
+test("Facebook usa el token de Instagram si no tiene el suyo", () => {
+
+    const settings = makeSettings({ instagramAccessToken: "ig" });
+
+    const provider = new FacebookProvider(settings);
+
+    assert.strictEqual(provider.accessToken, "ig");
+
+    settings.update({ secrets: { facebookAccessToken: "fb" } });
+
+    assert.strictEqual(provider.accessToken, "fb");
+
+});
+
+test("Instagram lee el token en cada uso", () => {
+
+    const settings = makeSettings({ instagramAccessToken: "a" });
+
+    const provider = new InstagramProvider(settings);
+
+    settings.update({ secrets: { instagramAccessToken: "b" } });
+
+    assert.strictEqual(provider.accessToken, "b");
 
 });

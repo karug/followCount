@@ -1,11 +1,18 @@
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
+const defaultSettings = require("../services/settings");
 
 class GithubProvider {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
-        this.token = process.env.GITHUB_TOKEN ?? null;
+        this.settings = settings;
+
+    }
+
+    get token() {
+
+        return this.settings.secret("githubToken");
 
     }
 

@@ -1,17 +1,28 @@
 const Http = require("../utils/Http");
 const Metric = require("../models/Metric");
+const defaultSettings = require("../services/settings");
 
 class TwitchProvider {
 
-    constructor() {
+    constructor(settings = defaultSettings) {
 
-        this.clientId = process.env.TWITCH_CLIENT_ID ?? null;
-
-        this.clientSecret = process.env.TWITCH_CLIENT_SECRET ?? null;
+        this.settings = settings;
 
         this.token = null;
 
         this.tokenExpires = 0;
+
+    }
+
+    get clientId() {
+
+        return this.settings.secret("twitchClientId");
+
+    }
+
+    get clientSecret() {
+
+        return this.settings.secret("twitchClientSecret");
 
     }
 
@@ -20,7 +31,7 @@ class TwitchProvider {
         if (!this.clientId || !this.clientSecret) {
 
             throw new Error(
-                "Missing TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET in .env"
+                "Missing Twitch client id / secret in settings"
             );
 
         }

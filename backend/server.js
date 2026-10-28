@@ -1,15 +1,17 @@
 // TODO: Delivery 2
 require("dotenv").config();
-const express = require("express");
-const path = require("path");
 
+const createApp = require("./app");
 const DashboardService = require("./services/DashboardService");
-const InstagramTokenService = require("./services/InstagramTokenService");
+const settings = require("./services/settings");
+const MetaTokenService = require("./services/MetaTokenService");
 const KioskMonitor = require("./services/KioskMonitor");
-
-const app = express();
+const SystemStatus = require("./services/SystemStatus");
+const AlertService = require("./services/AlertService");
 
 const PORT = process.env.PORT || 3000;
+
+const metaTokens = new MetaTokenService({ settings });
 
 const dashboardService = new DashboardService();
 
@@ -17,136 +19,12 @@ const kioskMonitor = new KioskMonitor(
     () => dashboardService.config ?? {}
 );
 
-/*
-|--------------------------------------------------------------------------
-| Middleware
-|--------------------------------------------------------------------------
-*/
+const systemStatus = new SystemStatus();
 
-app.disable("x-powered-by");
-
-app.use(express.json());
-
-app.use(express.urlencoded({
-    extended: true
-}));
-
-/*
-|--------------------------------------------------------------------------
-| Static frontend
-|--------------------------------------------------------------------------
-*/
-// Only cache/logos/ is public. Never widen this to the whole
-// cache/ directory: state/ (tokens, cached metrics) lives outside
-// it specifically so this route can't reach it, but scoping the
-// mount narrowly is a second line of defense against anything
-// else ending up under cache/ by mistake.
-app.use(
-    "/cache/logos",
-    express.static(
-        path.join(__dirname, "cache", "logos")
-    )
-);
-
-app.use(
-    express.static(
-        path.join(__dirname, "../frontend"),
-        {
-            // Kiosk browsers must revalidate assets on reload so
-            // icon/JS updates reach the screen.
-            maxAge: 0,
-            etag: true
-        }
-    )
-);
-
-/*
-|--------------------------------------------------------------------------
-| Health
-|--------------------------------------------------------------------------
-*/
-
-app.get("/api/health", (req, res) => {
-
-    res.json({
-        status: "UP",
-        timestamp: new Date().toISOString(),
-        instagramToken: InstagramTokenService.status(),
-        kiosk: kioskMonitor.status()
-    });
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| Kiosk heartbeat
-|--------------------------------------------------------------------------
-*/
-
-app.post("/api/heartbeat", (req, res) => {
-
-    kioskMonitor.record(req.body);
-
-    res.sendStatus(204);
-
-});
-
-app.get("/api/kiosk", (req, res) => {
-
-    res.set("Cache-Control", "no-store");
-
-    res.json(kioskMonitor.status());
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| Dashboard
-|--------------------------------------------------------------------------
-*/
-
-app.get("/api/dashboard", async (req, res) => {
-
-    try {
-
-        const dashboard =
-            await dashboardService.build();
-
-        res.set("Cache-Control", "no-store");
-
-        res.json(dashboard);
-
-    } catch (error) {
-
-        console.error(error);
-
-        res.status(500).json({
-
-            error: true,
-
-            message: "Unable to generate dashboard."
-
-        });
-
-    }
-
-});
-
-/*
-|--------------------------------------------------------------------------
-| SPA
-|--------------------------------------------------------------------------
-*/
-
-app.get("*", (req, res) => {
-
-    res.sendFile(
-        path.join(
-            __dirname,
-            "../frontend/index.html"
-        )
-    );
-
+const alertService = new AlertService({
+    metaTokens,
+    dashboard: dashboardService,
+    system: systemStatus
 });
 
 /*
@@ -159,14 +37,21 @@ async function start() {
 
     try {
 
-        InstagramTokenService.load();
+        settings.load();
 
-        // Refreshes the token every 48h so a 60-day expiry is
-        // never reached; a hard invalidation (password change,
-        // logout elsewhere) still needs a manual new token.
-        InstagramTokenService.start(48);
+        // Checks the real expiry of the Meta tokens once a day.
+        metaTokens.start(24);
 
         await dashboardService.initialize();
+
+        const app = createApp({
+            settings,
+            dashboardService,
+            metaTokens,
+            kioskMonitor,
+            alertService,
+            systemStatus
+        });
 
         app.listen(PORT, () => {
 
