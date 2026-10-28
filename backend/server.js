@@ -7,6 +7,8 @@ const DashboardService = require("./services/DashboardService");
 const settings = require("./services/settings");
 const MetaTokenService = require("./services/MetaTokenService");
 const KioskMonitor = require("./services/KioskMonitor");
+const SystemStatus = require("./services/SystemStatus");
+const AlertService = require("./services/AlertService");
 
 const metaTokens = new MetaTokenService({ settings });
 
@@ -19,6 +21,12 @@ const dashboardService = new DashboardService();
 const kioskMonitor = new KioskMonitor(
     () => dashboardService.config ?? {}
 );
+
+const alertService = new AlertService({
+    metaTokens,
+    dashboard: dashboardService,
+    system: new SystemStatus()
+});
 
 /*
 |--------------------------------------------------------------------------
@@ -117,7 +125,11 @@ app.get("/api/dashboard", async (req, res) => {
 
         res.set("Cache-Control", "no-store");
 
-        res.json(dashboard);
+        // Computed on every request, never stored in the dashboard cache.
+        res.json({
+            ...dashboard,
+            alerts: await alertService.codes()
+        });
 
     } catch (error) {
 
