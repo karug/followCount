@@ -45,6 +45,12 @@ class ValidationError extends Error {
 
 }
 
+function isPlainObject(value) {
+
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+
+}
+
 function isPositiveInteger(value) {
 
     return Number.isInteger(value) && value > 0;
@@ -230,13 +236,19 @@ class SettingsService extends EventEmitter {
     update(patch) {
 
         const next = {
-            config: this.data.config,
+            config: { ...this.data.config },
             secrets: { ...this.data.secrets },
             admin: { ...this.data.admin },
             meta: { ...this.data.meta }
         };
 
         const changed = [];
+
+        const invalid = BLOCKS.filter(block => patch[block] !== undefined && !isPlainObject(patch[block]));
+
+        if (invalid.length > 0) {
+            throw new ValidationError(invalid.map(block => `El bloque ${block} debe ser un objeto`));
+        }
 
         for (const block of BLOCKS) {
 
@@ -246,15 +258,18 @@ class SettingsService extends EventEmitter {
 
             changed.push(block);
 
-            if (block === "config") {
-                next.config = patch.config;
-                continue;
-            }
-
             for (const [key, value] of Object.entries(patch[block])) {
-                if (value !== undefined) {
+
+                if (value === undefined) {
+                    continue;
+                }
+
+                if (value === null && block === "secrets") {
+                    delete next.secrets[key];
+                } else {
                     next[block][key] = value;
                 }
+
             }
 
         }
@@ -325,7 +340,7 @@ class SettingsService extends EventEmitter {
 
         try {
 
-            fs.writeFileSync(temporary, JSON.stringify(data, null, 2), "utf8");
+            fs.writeFileSync(temporary, JSON.stringify(data, null, 2), { encoding: "utf8", mode: 0o600 });
 
             fs.renameSync(temporary, this.file);
 

@@ -242,3 +242,72 @@ test("validateConfig aplica las reglas por tipo y rangos", () => {
     assert.ok(validateConfig({ projects: "no" }).length > 0);
 
 });
+
+test("config se mezcla superficialmente y conserva projects", () => {
+
+    const dir = tempDir();
+
+    const { service } = makeService(dir, { legacyConfig: threeProjects });
+
+    service.load();
+
+    service.update({ config: { slideSeconds: 20 } });
+
+    assert.strictEqual(service.config().slideSeconds, 20);
+    assert.strictEqual(service.config().refreshSeconds, 60);
+    assert.strictEqual(service.config().projects.length, 3);
+
+});
+
+test("un null en secrets elimina la clave del fichero", () => {
+
+    const dir = tempDir();
+
+    const { service, file } = makeService(dir, {
+        legacyConfig: threeProjects,
+        env: { GITHUB_TOKEN: "gh" }
+    });
+
+    service.load();
+
+    service.update({ secrets: { githubToken: null } });
+
+    const onDisk = JSON.parse(fs.readFileSync(file, "utf8"));
+
+    assert.ok(!("githubToken" in onDisk.secrets));
+    assert.strictEqual(service.secret("githubToken"), null);
+
+});
+
+test("un bloque que no es objeto lanza ValidationError", () => {
+
+    const dir = tempDir();
+
+    const { service } = makeService(dir, { legacyConfig: threeProjects });
+
+    service.load();
+
+    for (const bad of [null, "texto", 5, []]) {
+        for (const block of ["config", "secrets", "admin", "meta"]) {
+            assert.throws(
+                () => service.update({ [block]: bad }),
+                error => error instanceof ValidationError && error.errors[0].includes(block)
+            );
+        }
+    }
+
+});
+
+test("settings.json se escribe con modo 0600 fuera de Windows", { skip: process.platform === "win32" }, () => {
+
+    const dir = tempDir();
+
+    const { service, file } = makeService(dir, { legacyConfig: threeProjects });
+
+    service.load();
+
+    service.update({ meta: { a: 1 } });
+
+    assert.strictEqual(fs.statSync(file).mode & 0o777, 0o600);
+
+});
