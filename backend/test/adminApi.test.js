@@ -167,7 +167,7 @@ test("PUT secrets guarda un token de Meta válido, avisa y relanza checkAll", as
 
         assert.strictEqual(response.status, 200);
         assert.strictEqual(settings.secret("instagramAccessToken"), "abc-long");
-        assert.deepStrictEqual(body.warnings, ["caduca pronto"]);
+        assert.deepStrictEqual(body.warnings, ["Instagram: caduca pronto"]);
         assert.strictEqual(checked, 1);
 
     } finally {
@@ -413,6 +413,124 @@ test("acción desconocida da 404", async () => {
     try {
 
         assert.strictEqual((await call("POST", "/actions/format-disk", {})).status, 404);
+
+    } finally {
+
+        await server.close();
+
+    }
+
+});
+
+test("PUT secrets valida el token de Meta con el App ID y secret del mismo envío", async () => {
+
+    const MetaTokenService = require("../services/MetaTokenService");
+
+    const { settings } = tempSettings();
+
+    const calls = [];
+
+    const http = {
+        getJson: async (url, { params }) => {
+            calls.push(params);
+            return { data: { is_valid: true, expires_at: 0 } };
+        }
+    };
+
+    const metaTokens = Object.assign(new MetaTokenService({ settings, http }), { checkAll: async () => {} });
+
+    const { server, call } = await startLoggedIn({ settings, metaTokens });
+
+    try {
+
+        const response = await call("PUT", "/secrets", {
+            secrets: { facebookAppId: "newId", facebookAppSecret: "newSecret", instagramAccessToken: "tok" }
+        });
+
+        assert.strictEqual(response.status, 200);
+        assert.strictEqual(calls[0].access_token, "newId|newSecret");
+        assert.strictEqual(settings.secret("instagramAccessToken"), "tok");
+
+    } finally {
+
+        await server.close();
+
+    }
+
+});
+
+test("PUT secrets recorta espacios y un valor en blanco cuenta como sin cambio", async () => {
+
+    const { server, settings, call } = await startLoggedIn();
+
+    try {
+
+        settings.update({ secrets: { githubToken: "ghp_original_value_123" } });
+
+        const response = await call("PUT", "/secrets", {
+            secrets: { githubToken: "   ", youtubeApiKey: "  key123  " }
+        });
+
+        assert.strictEqual(response.status, 200);
+        assert.strictEqual(settings.secret("githubToken"), "ghp_original_value_123");
+        assert.strictEqual(settings.secret("youtubeApiKey"), "key123");
+
+    } finally {
+
+        await server.close();
+
+    }
+
+});
+
+test("si el comando falla la acción responde 500 y pasa timeout a run", async () => {
+
+    const originalError = console.error;
+    console.error = () => {};
+
+    const options = [];
+
+    const systemActions = new SystemActions({
+        run: async (command, args, opts) => { options.push(opts); throw new Error("sudo: a password is required"); },
+        exit: () => {},
+        platform: "linux"
+    });
+
+    const { server, call } = await startLoggedIn({ systemActions });
+
+    try {
+
+        const response = await call("POST", "/actions/reboot", {});
+
+        assert.strictEqual(response.status, 500);
+        assert.deepStrictEqual(await response.json(), { error: "No se ha podido ejecutar la acción" });
+        assert.deepStrictEqual(options, [{ timeout: 30000 }]);
+
+    } finally {
+
+        console.error = originalError;
+
+        await server.close();
+
+    }
+
+});
+
+test("restart-backend llama a exit una sola vez", async () => {
+
+    let exits = 0;
+
+    const systemActions = new SystemActions({ run: async () => {}, exit: () => { exits++; }, platform: "linux" });
+
+    const { server, call } = await startLoggedIn({ systemActions });
+
+    try {
+
+        await call("POST", "/actions/restart-backend", {});
+
+        await new Promise(resolve => setTimeout(resolve, 700));
+
+        assert.strictEqual(exits, 1);
 
     } finally {
 

@@ -3,6 +3,8 @@ const { promisify } = require("util");
 
 const EXIT_DELAY_MS = 500;
 
+const COMMAND_TIMEOUT_MS = 30000;
+
 const COMMANDS = {
     "restart-kiosk": ["sudo", ["-n", "systemctl", "restart", "followcount-kiosk"]],
     "reboot": ["sudo", ["-n", "systemctl", "reboot"]]
@@ -42,7 +44,7 @@ class SystemActions {
 
         const [command, args] = COMMANDS[name];
 
-        await this.run(command, args);
+        await this.run(command, args, { timeout: COMMAND_TIMEOUT_MS });
 
     }
 

@@ -375,3 +375,25 @@ test("checkAll keeps the last known expiry when the check is inconclusive", asyn
     assert.strictEqual(warn.mock.callCount(), 1);
 
 });
+
+test("prepareForSave y inspect dan prioridad a las credenciales pasadas", async () => {
+
+    const soon = NOW + DAY;
+
+    const http = makeHttp({
+        debug: [debugData({ expires_at: soon / 1000 }), debugData({ expires_at: 0 })]
+    });
+
+    const service = new MetaTokenService({ settings: makeSettings(APP), http, now: () => NOW });
+
+    const result = await service.prepareForSave("short", { appId: "newId", appSecret: "newSecret" });
+
+    assert.strictEqual(result.token, "long");
+    assert.ok(http.calls.every(c => c.params.access_token === undefined || c.params.access_token === "newId|newSecret"));
+
+    const exchange = http.calls.find(c => c.params.grant_type === "fb_exchange_token");
+
+    assert.strictEqual(exchange.params.client_id, "newId");
+    assert.strictEqual(exchange.params.client_secret, "newSecret");
+
+});

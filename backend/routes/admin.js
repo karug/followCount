@@ -5,7 +5,11 @@ const { channelKey } = require("../services/DashboardService");
 
 const MIN_PASSWORD_LENGTH = 8;
 
-const META_SECRETS = ["instagramAccessToken", "facebookAccessToken"];
+// Meta tokens validated before saving, with their label for warnings.
+const META_SECRETS = {
+    instagramAccessToken: "Instagram",
+    facebookAccessToken: "Facebook"
+};
 
 // 12 characters or fewer would leak most of the secret if shown.
 function mask(value) {
@@ -165,7 +169,7 @@ function createAdminRouter({
 
     });
 
-    router.put("/config", (req, res) => {
+    router.put("/config", asyncRoute(async (req, res) => {
 
         const config = req.body?.config;
 
@@ -193,7 +197,7 @@ function createAdminRouter({
 
         res.json(settings.config());
 
-    });
+    }));
 
     router.put("/secrets", asyncRoute(async (req, res) => {
 
@@ -218,7 +222,17 @@ function createAdminRouter({
 
         const warnings = [];
 
-        for (const [name, value] of Object.entries(incoming)) {
+        const values = {};
+
+        for (const [name, raw] of Object.entries(incoming)) {
+
+            if (raw !== undefined && raw !== null && typeof raw !== "string") {
+
+                return res.status(400).json({ error: `El secreto ${name} debe ser texto` });
+
+            }
+
+            const value = typeof raw === "string" ? raw.trim() : raw;
 
             if (value === undefined || value === "") {
 
@@ -226,23 +240,29 @@ function createAdminRouter({
 
             }
 
-            if (value !== null && typeof value !== "string") {
+            values[name] = value;
 
-                return res.status(400).json({ error: `El secreto ${name} debe ser texto` });
+        }
 
-            }
+        // Credentials arriving in this same request win over saved ones.
+        const creds = {
+            appId: values.facebookAppId,
+            appSecret: values.facebookAppSecret
+        };
 
-            if (typeof value === "string" && META_SECRETS.includes(name)) {
+        for (const [name, value] of Object.entries(values)) {
+
+            if (typeof value === "string" && Object.hasOwn(META_SECRETS, name)) {
 
                 try {
 
-                    const prepared = await metaTokens.prepareForSave(value);
+                    const prepared = await metaTokens.prepareForSave(value, creds);
 
                     patch[name] = prepared.token;
 
                     if (prepared.warning) {
 
-                        warnings.push(prepared.warning);
+                        warnings.push(`${META_SECRETS[name]}: ${prepared.warning}`);
 
                     }
 
@@ -324,13 +344,40 @@ function createAdminRouter({
 
         if (name === "restart-backend") {
 
-            res.on("finish", () => systemActions.scheduleExit());
+            // Also on close: a dropped connection must not cancel the restart.
+            let scheduled = false;
+
+            const schedule = () => {
+
+                if (!scheduled) {
+
+                    scheduled = true;
+
+                    systemActions.scheduleExit();
+
+                }
+
+            };
+
+            res.on("finish", schedule);
+
+            res.on("close", schedule);
 
             return res.status(202).json({ ok: true });
 
         }
 
-        await systemActions.execute(name);
+        try {
+
+            await systemActions.execute(name);
+
+        } catch (error) {
+
+            console.error(error);
+
+            return res.status(500).json({ error: "No se ha podido ejecutar la acción" });
+
+        }
 
         res.json({ ok: true });
 

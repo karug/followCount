@@ -40,9 +40,22 @@ class MetaTokenService {
 
     }
 
-    async inspect(token) {
+    // Credentials passed in take priority over the saved ones, so a
+    // token can be checked in the same save that sets the app id/secret.
+    credentials(creds = {}) {
 
-        if (!this.appId || !this.appSecret) {
+        return {
+            appId: creds.appId || this.appId,
+            appSecret: creds.appSecret || this.appSecret
+        };
+
+    }
+
+    async inspect(token, creds = {}) {
+
+        const { appId, appSecret } = this.credentials(creds);
+
+        if (!appId || !appSecret) {
 
             return {
                 valid: null,
@@ -60,7 +73,7 @@ class MetaTokenService {
 
                     input_token: token,
 
-                    access_token: `${this.appId}|${this.appSecret}`
+                    access_token: `${appId}|${appSecret}`
 
                 }
 
@@ -96,9 +109,11 @@ class MetaTokenService {
 
     }
 
-    async prepareForSave(token) {
+    async prepareForSave(token, creds = {}) {
 
-        const status = await this.inspect(token);
+        const { appId, appSecret } = this.credentials(creds);
+
+        const status = await this.inspect(token, { appId, appSecret });
 
         if (status.valid === false) {
 
@@ -128,9 +143,9 @@ class MetaTokenService {
 
                     grant_type: "fb_exchange_token",
 
-                    client_id: this.appId,
+                    client_id: appId,
 
-                    client_secret: this.appSecret,
+                    client_secret: appSecret,
 
                     fb_exchange_token: token
 
@@ -152,7 +167,7 @@ class MetaTokenService {
 
         }
 
-        const renewed = await this.inspect(result);
+        const renewed = await this.inspect(result, { appId, appSecret });
 
         if (renewed.valid === false) {
 
