@@ -144,6 +144,40 @@ lastError }` para comprobar el estado sin mirar logs.
 
 ## API
 
-- `GET /api/health` — incluye el estado del token de Instagram.
+- `GET /api/health` — incluye el estado del token de Instagram y un
+  resumen del latido del kiosco (`kiosk`).
+- `POST /api/heartbeat` — latido que envía el frontend en cada cambio
+  de diapositiva y tras cada refresco; responde 204.
+- `GET /api/kiosk` — `{ lastHeartbeatAt, ageSeconds, thresholdSeconds,
+  stale, last }`. El umbral es `max(180, 3 × max(slideSeconds,
+  refreshSeconds))`; sin latidos aún, la edad cuenta desde el arranque
+  del backend.
 - `GET /api/dashboard` — modelo listo para pintar (proyectos, métricas,
   logos cacheados en `/cache/logos/`).
+
+## Vigilante del kiosco (Raspberry Pi)
+
+El watchdog interno de la página (`location.reload()`) no sirve si el
+renderer de Chromium se cuelga. Por eso el frontend envía un latido al
+backend y un temporizador de systemd (cada 60 s, y 2 min tras el
+arranque) ejecuta `deploy/kiosk-watchdog.sh`: si `/api/kiosk` dice
+`stale` y `followcount-kiosk` lleva activo más que el umbral, reinicia
+el kiosco y deja en el journal la edad del latido, el último payload,
+`vcgencmd get_throttled`, la frecuencia ARM y la memoria libre. Si el
+backend no responde no hace nada (ya tiene `Restart=always`).
+
+`scripts/install.sh` lo instala automáticamente. A mano:
+
+```
+sudo cp deploy/systemd/followcount-kiosk-watchdog.{service,timer} /etc/systemd/system/
+sudo chmod +x deploy/kiosk-watchdog.sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now followcount-kiosk-watchdog.timer
+```
+
+(El `.service` asume el repo en `/home/info/followCount`; ajusta
+`ExecStart` si está en otra ruta.) Logs:
+
+```
+journalctl -u followcount-kiosk-watchdog
+```

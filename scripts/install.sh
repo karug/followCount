@@ -3,15 +3,15 @@ set -e
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 BACKEND="$PROJECT_DIR/backend"
 
-echo "[1/6] Instalando dependencias..."
+echo "[1/7] Instalando dependencias..."
 sudo apt-get update
 sudo apt-get install -y nodejs npm unclutter chromium-browser || sudo apt-get install -y nodejs npm unclutter chromium
 
-echo "[2/6] npm install..."
+echo "[2/7] npm install..."
 cd "$BACKEND"
 npm install
 
-echo "[3/6] Generando servicio backend..."
+echo "[3/7] Generando servicio backend..."
 sudo tee /etc/systemd/system/followcount-backend.service >/dev/null <<EOF
 [Unit]
 Description=followCount Backend
@@ -29,7 +29,7 @@ EOF
 
 CHROMIUM=$(command -v chromium-browser || command -v chromium)
 
-echo "[4/6] Generando servicio kiosco..."
+echo "[4/7] Generando servicio kiosco..."
 sudo tee /etc/systemd/system/followcount-kiosk.service >/dev/null <<EOF
 [Unit]
 Description=followCount Kiosk
@@ -49,10 +49,17 @@ User=$USER
 WantedBy=graphical.target
 EOF
 
-echo "[5/6] Activando servicios..."
+echo "[5/7] Instalando vigilante del kiosco..."
+chmod +x "$PROJECT_DIR/deploy/kiosk-watchdog.sh"
+for unit in followcount-kiosk-watchdog.service followcount-kiosk-watchdog.timer; do
+    sed "s|/home/info/followCount|$PROJECT_DIR|g" "$PROJECT_DIR/deploy/systemd/$unit"         | sudo tee "/etc/systemd/system/$unit" >/dev/null
+done
+
+echo "[6/7] Activando servicios..."
 sudo systemctl daemon-reload
 sudo systemctl enable followcount-backend.service
 sudo systemctl enable followcount-kiosk.service
+sudo systemctl enable --now followcount-kiosk-watchdog.timer
 sudo systemctl restart followcount-backend.service || true
 
-echo "[6/6] Instalación finalizada."
+echo "[7/7] Instalación finalizada."
