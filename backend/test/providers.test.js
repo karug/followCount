@@ -304,3 +304,133 @@ test("Instagram lee el token en cada uso", () => {
     assert.strictEqual(provider.accessToken, "b");
 
 });
+
+function stubGraph(handler) {
+
+    const Http = require("../utils/Http");
+
+    const original = Http.getJson;
+
+    const calls = [];
+
+    Http.getJson = async (url, config) => {
+
+        calls.push({ url, params: config.params });
+
+        return handler(url, config.params);
+
+    };
+
+    return {
+        calls,
+        restore: () => { Http.getJson = original; }
+    };
+
+}
+
+const fakeSettings = { secret: () => "token" };
+
+const CONNECTED = {
+    id: "17841425544923467",
+    username: "expirioapp",
+    name: "Expirio",
+    followers_count: 7
+};
+
+test("graph resolves an own account exposed only as connected_instagram_account", async () => {
+
+    const stub = stubGraph(() => ({
+        connected_instagram_account: CONNECTED,
+        id: "1059480013926348"
+    }));
+
+    try {
+
+        const provider = new InstagramProvider(fakeSettings);
+
+        const metric =
+            await provider.fetchFromGraph("expirioapp", "1059480013926348");
+
+        assert.strictEqual(metric.value, 7);
+
+        assert.match(
+            stub.calls[0].params.fields,
+            /connected_instagram_account\{/
+        );
+
+    } finally {
+
+        stub.restore();
+
+    }
+
+});
+
+test("graph uses a connected_instagram_account from /me/accounts as business discovery gateway", async () => {
+
+    const stub = stubGraph((url) => {
+
+        if (url.endsWith("/me/accounts")) {
+
+            return {
+                data: [{ connected_instagram_account: CONNECTED }]
+            };
+
+        }
+
+        return {
+            business_discovery: {
+                username: "karug3d",
+                followers_count: 99
+            }
+        };
+
+    });
+
+    try {
+
+        const provider = new InstagramProvider(fakeSettings);
+
+        const metric = await provider.fetchFromGraph("karug3d");
+
+        assert.strictEqual(metric.value, 99);
+
+        const last = stub.calls.at(-1);
+
+        assert.ok(last.url.endsWith(`/${CONNECTED.id}`));
+
+        assert.match(
+            last.params.fields,
+            /business_discovery\.username\(karug3d\)/
+        );
+
+    } finally {
+
+        stub.restore();
+
+    }
+
+});
+
+test("graph still resolves instagram_business_account on the page", async () => {
+
+    const stub = stubGraph(() => ({
+        instagram_business_account: CONNECTED
+    }));
+
+    try {
+
+        const provider = new InstagramProvider(fakeSettings);
+
+        const metric =
+            await provider.fetchFromGraph("expirioapp", "1059480013926348");
+
+        assert.strictEqual(metric.value, 7);
+
+    } finally {
+
+        stub.restore();
+
+    }
+
+});

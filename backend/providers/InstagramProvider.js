@@ -256,6 +256,9 @@ class InstagramProvider {
                     fields:
                         "instagram_business_account{id,username," +
                         "name,followers_count,profile_picture_url," +
+                        "media_count}," +
+                        "connected_instagram_account{id,username," +
+                        "name,followers_count,profile_picture_url," +
                         "media_count}",
 
                     access_token: this.accessToken
@@ -265,7 +268,10 @@ class InstagramProvider {
             }
         );
 
-        const account = page.instagram_business_account;
+        // System-user tokens only expose the connected_* field.
+        const account =
+            page.instagram_business_account ??
+            page.connected_instagram_account;
 
         if (!account) {
 
@@ -299,7 +305,9 @@ class InstagramProvider {
 
                 params: {
 
-                    fields: "instagram_business_account{id,username}",
+                    fields:
+                        "instagram_business_account{id,username}," +
+                        "connected_instagram_account{id,username}",
 
                     access_token: this.accessToken
 
@@ -313,7 +321,8 @@ class InstagramProvider {
         for (const page of response.data ?? []) {
 
             const account =
-                page.instagram_business_account;
+                page.instagram_business_account ??
+                page.connected_instagram_account;
 
             if (account) {
 
