@@ -212,7 +212,7 @@ class InstagramProvider {
                 params: {
 
                     fields:
-                        `business_discovery.username(${username})` +
+                        `business_discovery.username(${username.toLowerCase()})` +
                         "{username,name,followers_count," +
                         "profile_picture_url,media_count}",
 

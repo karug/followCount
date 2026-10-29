@@ -434,3 +434,47 @@ test("graph still resolves instagram_business_account on the page", async () => 
     }
 
 });
+
+test("graph sends business_discovery with the username in lowercase", async () => {
+
+    const stub = stubGraph((url) => {
+
+        if (url.endsWith("/me/accounts")) {
+
+            return {
+                data: [{ connected_instagram_account: CONNECTED }]
+            };
+
+        }
+
+        return {
+            business_discovery: {
+                username: "cofrade_3d",
+                followers_count: 12
+            }
+        };
+
+    });
+
+    try {
+
+        const provider = new InstagramProvider(fakeSettings);
+
+        const metric = await provider.fetchFromGraph("Cofrade_3d");
+
+        assert.strictEqual(metric.value, 12);
+
+        const last = stub.calls.at(-1);
+
+        assert.match(
+            last.params.fields,
+            /business_discovery\.username\(cofrade_3d\)/
+        );
+
+    } finally {
+
+        stub.restore();
+
+    }
+
+});
