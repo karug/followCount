@@ -253,3 +253,80 @@ sudo systemctl enable --now followcount-kiosk-watchdog.timer
 ```
 journalctl -u followcount-kiosk-watchdog
 ```
+
+## Vigilante de red (Raspberry Pi)
+
+La Pi sale solo por `wlan0` y, con bajo voltaje (`throttled=0x50005`),
+la wifi puede caerse y no volver. El kiosco seguía pintando y el backend
+respondiendo en `localhost`, así que la pantalla se quedó congelada
+días sin que nada lo notara. `deploy/net-watchdog.sh` (timer de
+systemd cada 60 s, y 3 min tras el arranque) comprueba, de lo más
+barato a lo más significativo: IPv4 y ruta por defecto en `wlan0`, ping
+a la puerta de enlace, ping a `1.1.1.1`/`8.8.8.8` (basta uno) y que el
+DNS resuelva `graph.facebook.com`. Está sana si hay internet **y** DNS.
+El log distingue la causa: sin IP o sin ruta (wifi caída), LAN bien pero
+sin internet (router: la Pi no puede hacer nada y no actúa), o internet
+bien pero DNS no.
+
+Escalado, con un contador de fallos consecutivos en
+`/var/lib/followcount/net-watchdog.state` (sobrevive al reinicio):
+
+- 1-2 fallos: solo log.
+- 3.º fallo (~3 min): recupera la wifi según lo que gestione la red:
+  NetworkManager (`nmcli device reapply wlan0`, y si no
+  `systemctl restart NetworkManager`), dhcpcd (`systemctl restart
+  dhcpcd`) o, sin ninguno, `wpa_cli -i wlan0 reconfigure`; último
+  recurso, bajar y subir `wlan0`. El log dice cuál usó.
+- 10.º fallo (~10 min): `systemctl reboot`, como máximo uno cada 6 h y
+  solo si el uptime pasa de 15 min.
+- Al volver la red: contador a cero y una línea con la duración del corte.
+
+No actúa en los primeros 3 min de arranque. Antes de cada acción deja en
+el journal la foto del momento (`vcgencmd get_throttled`, señal wifi,
+`ip -4 addr`, `ip route`, fallos y tiempo sin red). Nunca falla
+ruidosamente: cualquier error acaba en `exit 0`.
+
+`scripts/install.sh` lo instala automáticamente. A mano:
+
+```
+sudo cp deploy/systemd/followcount-net-watchdog.{service,timer} /etc/systemd/system/
+sudo chmod +x deploy/net-watchdog.sh
+sudo systemctl daemon-reload
+sudo systemctl enable --now followcount-net-watchdog.timer
+```
+
+(El `.service` asume el repo en `/home/info/followCount`.) Logs:
+
+```
+journalctl -u followcount-net-watchdog
+```
+
+Para probarlo sin riesgo, en modo simulación (registra lo que haría sin
+hacerlo; con `NET_WATCHDOG_RECOVER_AFTER=1` fuerza el escalado ante el
+primer fallo, p. ej. con la wifi desconectada):
+
+```
+sudo NET_WATCHDOG_DRY_RUN=1 deploy/net-watchdog.sh
+```
+
+Variables: `NET_WATCHDOG_IFACE`, `_STATE`, `_PING_TARGETS`, `_DNS_HOST`,
+`_RECOVER_AFTER` (3), `_REBOOT_AFTER` (10), `_REBOOT_INTERVAL` (21600 s),
+`_BOOT_GRACE` (180 s), `_REBOOT_MIN_UPTIME` (900 s), `_DRY_RUN`.
+
+### Journal persistente
+
+Por defecto el journal es volátil y un reinicio se lleva las pruebas de
+lo que pasó. `scripts/install.sh` lo deja persistente (limitado a 50 MB
+para no castigar la SD). A mano:
+
+```
+sudo mkdir -p /var/log/journal /etc/systemd/journald.conf.d
+printf '[Journal]
+Storage=persistent
+SystemMaxUse=50M
+' | sudo tee /etc/systemd/journald.conf.d/followcount.conf
+sudo systemd-tmpfiles --create --prefix /var/log/journal
+sudo systemctl restart systemd-journald
+```
+
+Tras un reinicio, `journalctl -b -1` muestra el arranque anterior.
