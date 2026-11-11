@@ -234,6 +234,47 @@ test("LAN bien pero sin internet: problema del router, no toca la wifi", { skip:
     // la puerta de enlace responde, internet no
     const r = run({ FAKE_PING_FAIL: "1.1.1.1 8.8.8.8", FAKE_DNS: "fail" }, { initialFails: 2 });
     assert.match(r.out, /router/);
+    assert.strictEqual(failsOf(r.state), "2");
+    assert.doesNotMatch(r.calls, ACTIONS);
+});
+
+test("DNS caido: recupera pero nunca reinicia, ni con 20 fallos", { skip: skipReason }, (t) => {
+    const { run } = setup(t);
+    let r = run({ FAKE_DNS: "fail" }, { initialFails: 2 });
+    assert.match(r.calls, /wpa_cli -i wlan0 reconfigure/);
+    r = run({ FAKE_DNS: "fail" }, { initialFails: 19 });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(failsOf(r.state), "20");
+    assert.doesNotMatch(r.calls, /systemctl reboot/);
+    assert.match(r.out, /DNS/);
+});
+
+test("la recuperacion se reintenta en 3, 6 y 9 pero no en 4", { skip: skipReason }, (t) => {
+    for (const [prev, expected] of [[2, true], [3, false], [5, true], [8, true]]) {
+        const { run } = setup(t);
+        const r = run(NET_DOWN, { initialFails: prev });
+        assert.strictEqual(/wpa_cli -i wlan0 reconfigure/.test(r.calls), expected, `fallo ${prev + 1}`);
+        assert.doesNotMatch(r.calls, /systemctl reboot/);
+    }
+});
+
+test("RECOVER_AFTER=0 no divide por cero", { skip: skipReason }, (t) => {
+    const { run } = setup(t);
+    const r = run({ ...NET_DOWN, NET_WATCHDOG_RECOVER_AFTER: "0" }, { initialFails: 2 });
+    assert.strictEqual(r.status, 0);
+    assert.strictEqual(failsOf(r.state), "3");
+});
+
+test("fallos de router no cuentan: un wifi posterior empieza en 1 y no reinicia", { skip: skipReason }, (t) => {
+    const { run } = setup(t);
+    const router = { FAKE_PING_FAIL: "1.1.1.1 8.8.8.8", FAKE_DNS: "fail" };
+    let r;
+    for (let i = 0; i < 20; i++) r = run(router);
+    assert.ok(failsOf(r.state) === "0");
+    assert.match(r.state, /since=1000000/);
+    assert.doesNotMatch(r.calls, ACTIONS);
+    r = run(NET_DOWN);
+    assert.strictEqual(failsOf(r.state), "1");
     assert.doesNotMatch(r.calls, ACTIONS);
 });
 

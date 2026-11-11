@@ -101,7 +101,7 @@ fi
 # --- Red sana: contador a cero ----------------------------------------------
 
 if [ "$internet_ok" = 1 ] && [ "$dns_ok" = 1 ]; then
-    if [ "$fails" -gt 0 ]; then
+    if [ "$fails" -gt 0 ] || [ "$since" -gt 0 ]; then
         outage=0
         [ "$since" -gt 0 ] && outage=$(( now - since ))
         log "red recuperada tras ${outage} s sin red ($fails chequeos fallidos seguidos)"
@@ -128,10 +128,19 @@ else
     detail="hay internet (ping) pero el DNS no resuelve $DNS_HOST"
 fi
 
-[ "$fails" -gt 0 ] || since=$now
-fails=$(( fails + 1 ))
 [ "$since" -gt 0 ] || since=$now
 outage=$(( now - since ))
+
+# Un fallo del router no cuenta para el escalado: la Pi no puede arreglarlo, y
+# un contador inflado reiniciaria la Pi en el primer parpadeo wifi posterior.
+if [ "$cause" = "router" ]; then
+    save_state
+    log "fallo de red (causa: router, no cuenta para el escalado; contador en $fails): $detail; sin red desde hace ${outage} s"
+    log "no hago nada: ni recuperar la wifi ni reiniciar arreglarian un fallo fuera de la Pi"
+    exit 0
+fi
+
+fails=$(( fails + 1 ))
 save_state
 
 log "fallo de red $fails (causa: $cause): $detail; sin red desde hace ${outage} s"
@@ -195,18 +204,20 @@ recover_wifi() {
 
 # --- Escalado -------------------------------------------------------------------
 
-if [ "$cause" = "router" ]; then
-    log "no hago nada: ni recuperar la wifi ni reiniciar arreglarian un fallo fuera de la Pi"
-    exit 0
-fi
-
-if [ "$fails" -eq "$RECOVER_AFTER" ]; then
+# Reintenta la recuperacion cada RECOVER_AFTER fallos (3, 6, 9...) mientras no
+# toque reiniciar. Con RECOVER_AFTER invalido (0) se usa 1: no dividir por cero.
+recover_every=$RECOVER_AFTER
+is_num "$recover_every" && [ "$recover_every" -gt 0 ] || recover_every=1
+if [ "$fails" -ge "$recover_every" ] && [ $(( fails % recover_every )) -eq 0 ]     && { [ "$fails" -lt "$REBOOT_AFTER" ] || [ "$cause" = "dns" ]; }; then
     snapshot
     log "$fails fallos seguidos: intento recuperar la wifi"
     recover_wifi || log "la recuperacion de la wifi fallo"
 fi
 
-if [ "$fails" -ge "$REBOOT_AFTER" ]; then
+# Un DNS caido (con internet) suele ser del operador: reiniciar no lo arregla.
+if [ "$cause" = "dns" ] && [ "$fails" -ge "$REBOOT_AFTER" ]; then
+    log "no reinicio: la causa es solo el DNS (reiniciar la Pi no lo arregla)"
+elif [ "$fails" -ge "$REBOOT_AFTER" ]; then
     since_reboot=$(( now - last_reboot ))
     if [ "$uptime_s" -le "$REBOOT_MIN_UPTIME" ]; then
         log "no reinicio: uptime ${uptime_s} s (minimo ${REBOOT_MIN_UPTIME} s)"

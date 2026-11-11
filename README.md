@@ -272,13 +272,15 @@ Escalado, con un contador de fallos consecutivos en
 `/var/lib/followcount/net-watchdog.state` (sobrevive al reinicio):
 
 - 1-2 fallos: solo log.
-- 3.º fallo (~3 min): recupera la wifi según lo que gestione la red:
+- 3.º fallo (~3 min), y de nuevo cada 3 (6.º, 9.º...): recupera la wifi según lo que gestione la red:
   NetworkManager (`nmcli device reapply wlan0`, y si no
   `systemctl restart NetworkManager`), dhcpcd (`systemctl restart
   dhcpcd`) o, sin ninguno, `wpa_cli -i wlan0 reconfigure`; último
   recurso, bajar y subir `wlan0`. El log dice cuál usó.
 - 10.º fallo (~10 min): `systemctl reboot`, como máximo uno cada 6 h y
   solo si el uptime pasa de 15 min.
+  Solo escalan los fallos que la Pi puede arreglar: los de router no
+  cuentan, y con solo el DNS caído se recupera pero nunca se reinicia.
 - Al volver la red: contador a cero y una línea con la duración del corte.
 
 No actúa en los primeros 3 min de arranque. Antes de cada acción deja en
