@@ -116,13 +116,30 @@ class MetaTokenService {
 
     async prepareForSave(token, creds = {}) {
 
+        const result = await this.renewIfNeeded(token, creds);
+
+        if (result.status.valid === false) {
+
+            throw new Error(result.status.error);
+
+        }
+
+        return result;
+
+    }
+
+    // Inspects the token and, when it expires in under EXCHANGE_BELOW_DAYS,
+    // swaps it for a long-lived one. Never throws on an invalid token: the
+    // caller decides (status.valid === false comes back untouched).
+    async renewIfNeeded(token, creds = {}) {
+
         const { appId, appSecret } = this.credentials(creds);
 
         const status = await this.inspect(token, { appId, appSecret });
 
         if (status.valid === false) {
 
-            throw new Error(status.error);
+            return { token, status, warning: status.error };
 
         }
 
@@ -223,38 +240,66 @@ class MetaTokenService {
 
             }
 
-            const status = await this.inspect(token);
+            try {
 
-            if (status.valid === null) {
+                const result = await this.renewIfNeeded(token);
 
-                // Inconclusive: keep the last known expiry
-                status.expiresAt = previous[name]?.expiresAt ?? null;
+                const status = { ...result.status };
 
-                console.warn(`Meta ${name} token could not be checked: ${status.error}`);
+                if (status.valid === null) {
 
-            } else if (status.valid === false || this.expiresSoon(status, WARN_BELOW_DAYS)) {
+                    // Inconclusive: keep the last known expiry
+                    status.expiresAt = previous[name]?.expiresAt ?? null;
 
-                console.warn(
-                    `Meta ${name} token needs attention: ` +
-                    (status.error ?? `expires at ${new Date(status.expiresAt).toISOString()}`)
-                );
+                    console.warn(`Meta ${name} token could not be checked: ${status.error}`);
 
-            }
+                } else if (status.valid === false || this.expiresSoon(status, WARN_BELOW_DAYS)) {
 
-            if (this.settings.secret(SECRET_BY_TARGET[name]) !== token) {
+                    console.warn(
+                        `Meta ${name} token needs attention: ` +
+                        (status.error ?? `expires at ${new Date(status.expiresAt).toISOString()}`)
+                    );
 
-                // The token was replaced while checking: keep whatever is stored now
+                } else if (result.warning) {
+
+                    console.warn(`Meta ${name} token: ${result.warning}`);
+
+                }
+
+                if (this.settings.secret(SECRET_BY_TARGET[name]) !== token) {
+
+                    // The token was replaced while checking: keep whatever is stored now
+                    const current = this.status()[name];
+
+                    if (current) {
+                        metaTokens[name] = current;
+                    }
+
+                    continue;
+
+                }
+
+                if (result.token !== token) {
+
+                    this.settings.update({ secrets: { [SECRET_BY_TARGET[name]]: result.token } });
+
+                    console.log(`Token de Meta renovado: ${name}`);
+
+                }
+
+                metaTokens[name] = { ...status, checkedAt };
+
+            } catch (error) {
+
+                console.warn(`Meta ${name} token check failed: ${error.message}`);
+
                 const current = this.status()[name];
 
                 if (current) {
                     metaTokens[name] = current;
                 }
 
-                continue;
-
             }
-
-            metaTokens[name] = { ...status, checkedAt };
 
         }
 

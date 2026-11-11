@@ -424,3 +424,232 @@ test("checkAll no guarda el estado de un token que ya fue sustituido", async () 
     assert.strictEqual(service.status().instagram, undefined);
 
 });
+
+const laterExp = Math.floor((NOW + 60 * DAY) / 1000);
+
+const igSettings = (extra = {}) => makeSettings({ ...APP, instagramAccessToken: "short", ...extra });
+
+test("checkAll renueva y guarda el token que caduca en menos de 7 días", async (t) => {
+
+    t.mock.method(console, "log", () => {});
+
+    const settings = igSettings();
+
+    const http = makeHttp({
+        debug: [debugData({ expires_at: soonExp }), debugData({ expires_at: laterExp })]
+    });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "long");
+
+    const status = service.status().instagram;
+
+    assert.strictEqual(status.expiresAt, laterExp * 1000);
+
+    assert.deepStrictEqual(Object.keys(status).sort(), ["checkedAt", "error", "expiresAt", "valid"]);
+
+});
+
+test("checkAll no renueva ni llama a oauth/access_token cuando caduca lejos", async () => {
+
+    const settings = igSettings();
+
+    const http = makeHttp({ debug: [debugData({ expires_at: laterExp })] });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.ok(!http.calls.some((c) => c.url.endsWith("/oauth/access_token")));
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "short");
+
+});
+
+test("checkAll conserva el token y su status si el intercambio falla", async (t) => {
+
+    const warn = t.mock.method(console, "warn", () => {});
+
+    const settings = igSettings();
+
+    const http = makeHttp({ debug: [debugData({ expires_at: soonExp })], exchange: {} });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "short");
+
+    assert.strictEqual(service.status().instagram.expiresAt, soonExp * 1000);
+
+    assert.ok(warn.mock.callCount() >= 1);
+
+});
+
+test("checkAll conserva el original si el token renovado resulta inválido", async (t) => {
+
+    t.mock.method(console, "warn", () => {});
+
+    const settings = igSettings();
+
+    const http = makeHttp({
+        debug: [
+            debugData({ expires_at: soonExp }),
+            { data: { is_valid: false, error: { message: "Bad long token" } } }
+        ]
+    });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "short");
+
+    assert.strictEqual(service.status().instagram.valid, true);
+
+    assert.strictEqual(service.status().instagram.expiresAt, soonExp * 1000);
+
+});
+
+test("checkAll con token inválido no intenta renovar, no lanza y guarda valid false", async (t) => {
+
+    t.mock.method(console, "warn", () => {});
+
+    const settings = igSettings();
+
+    const http = makeHttp({ debug: [{ data: { is_valid: false, error: { message: "Expired" } } }] });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.ok(!http.calls.some((c) => c.url.endsWith("/oauth/access_token")));
+
+    assert.strictEqual(service.status().instagram.valid, false);
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "short");
+
+});
+
+test("checkAll no renueva cuando no se pudo comprobar el token", async (t) => {
+
+    t.mock.method(console, "warn", () => {});
+
+    const settings = igSettings();
+
+    const http = makeHttp({ debug: [new Error("down")] });
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.ok(!http.calls.some((c) => c.url.endsWith("/oauth/access_token")));
+
+    assert.strictEqual(service.status().instagram.valid, null);
+
+});
+
+test("checkAll no pisa un token sustituido durante la renovación", async (t) => {
+
+    t.mock.method(console, "log", () => {});
+
+    const settings = igSettings();
+
+    const http = makeHttp({
+        debug: [debugData({ expires_at: soonExp }), debugData({ expires_at: laterExp })]
+    });
+
+    const getJson = http.getJson.bind(http);
+
+    http.getJson = async (url, options) => {
+
+        const result = await getJson(url, options);
+
+        if (url.endsWith("/oauth/access_token")) {
+
+            settings.update({ secrets: { instagramAccessToken: "manual" } });
+
+        }
+
+        return result;
+
+    };
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "manual");
+
+    assert.strictEqual(service.status().instagram, undefined);
+
+});
+
+test("checkAll sigue con facebook aunque falle la renovación de instagram", async (t) => {
+
+    t.mock.method(console, "warn", () => {});
+
+    t.mock.method(console, "log", () => {});
+
+    const settings = igSettings({ facebookAccessToken: "fbshort" });
+
+    const http = makeHttp({
+        debug: [
+            debugData({ expires_at: soonExp }),
+            debugData({ expires_at: soonExp }),
+            debugData({ expires_at: laterExp })
+        ]
+    });
+
+    const getJson = http.getJson.bind(http);
+
+    http.getJson = async (url, options) => {
+
+        if (url.endsWith("/oauth/access_token") && options.params.fb_exchange_token === "short") {
+
+            throw new Error("boom");
+
+        }
+
+        return getJson(url, options);
+
+    };
+
+    const service = new MetaTokenService({ settings, http, now: () => NOW });
+
+    await service.checkAll();
+
+    assert.strictEqual(settings.secret("instagramAccessToken"), "short");
+
+    assert.strictEqual(settings.secret("facebookAccessToken"), "long");
+
+    assert.strictEqual(service.status().facebook.expiresAt, laterExp * 1000);
+
+    assert.ok(service.status().instagram);
+
+});
+
+test("checkAll no imprime el token en los logs", async (t) => {
+
+    const log = t.mock.method(console, "log", () => {});
+
+    const warn = t.mock.method(console, "warn", () => {});
+
+    const http = makeHttp({
+        debug: [debugData({ expires_at: soonExp }), debugData({ expires_at: laterExp })]
+    });
+
+    const service = new MetaTokenService({ settings: igSettings(), http, now: () => NOW });
+
+    await service.checkAll();
+
+    const output = JSON.stringify([...log.mock.calls, ...warn.mock.calls]);
+
+    assert.ok(!output.includes("short"));
+
+    assert.ok(!output.includes('"long"'));
+
+});
