@@ -38,6 +38,12 @@ case "$name" in
     exit "$rc" ;;
   vcgencmd) echo "throttled=0x50005"; exit "$rc" ;;
   iw) echo "signal: -70 dBm"; exit "$rc" ;;
+  iwconfig) echo "Signal level=-71 dBm"; exit "$rc" ;;
+  nmcli)
+    case "$*" in
+      *"dev wifi"*) echo "no:OtraRed:80:130 Mbit/s"; echo "yes:MiRedWifi:51:130 Mbit/s" ;;
+    esac
+    exit "$rc" ;;
   *) exit "$rc" ;;
 esac
 `;
@@ -54,6 +60,12 @@ function setup(t) {
     }
     const calls = path.join(dir, "calls.log");
     fs.writeFileSync(calls, "");
+    const wireless = path.join(dir, "wireless");
+    fs.writeFileSync(
+        wireless,
+        " face | tus | link level noise |  nwid  crypt   frag  retry   misc | beacon | 22\n" +
+            " wlan0: 0000   41.  -69.  -256        0      0      0      0      0        0\n",
+    );
     const uptime = path.join(dir, "uptime");
     fs.writeFileSync(uptime, "5000.00 4000.00\n");
     const state = path.join(dir, "state", "net-watchdog.state");
@@ -71,6 +83,7 @@ function setup(t) {
                 FAKE_CALLS: calls,
                 NET_WATCHDOG_STATE: state,
                 NET_WATCHDOG_UPTIME_FILE: uptime,
+                NET_WATCHDOG_WIRELESS_FILE: wireless,
                 NET_WATCHDOG_NOW: "1000000",
                 FAKE_PING_FAIL: "",
                 FAKE_ACTIVE: "",
@@ -84,7 +97,9 @@ function setup(t) {
             state: fs.existsSync(state) ? fs.readFileSync(state, "utf8") : "",
         };
     }
-    return { run, uptime, state, calls };
+    // Quita herramientas del PATH falso para simular que no estan instaladas.
+    const remove = (...names) => names.forEach((n) => fs.rmSync(path.join(bin, n), { force: true }));
+    return { run, uptime, state, calls, wireless, remove };
 }
 
 const NET_DOWN = { FAKE_PING_FAIL: "1.1.1.1 8.8.8.8 192.168.1.1", FAKE_DNS: "fail" };
@@ -283,4 +298,55 @@ test("internet bien pero DNS no: lo distingue", { skip: skipReason }, (t) => {
     const r = run({ FAKE_DNS: "fail" });
     assert.match(r.out, /DNS/);
     assert.strictEqual(failsOf(r.state), "1");
+});
+
+// --- Senal wifi en la foto del momento ---------------------------------------
+
+test("la foto registra calidad y dBm de /proc/net/wireless", { skip: skipReason }, (t) => {
+    const { run } = setup(t);
+    const r = run(NET_DOWN, { initialFails: 2 });
+    assert.match(r.out, /wireless wlan0: calidad de enlace 41, nivel -69 dBm/);
+});
+
+test("con iw presente se usa iw", { skip: skipReason }, (t) => {
+    const { run } = setup(t);
+    const r = run(NET_DOWN, { initialFails: 2 });
+    assert.match(r.calls, /^iw dev wlan0 link/m);
+    assert.match(r.out, /wifi wlan0: signal: -70 dBm/);
+    assert.doesNotMatch(r.calls, /nmcli --rescan/);
+});
+
+test("sin iw pero con iwconfig se usa iwconfig", { skip: skipReason }, (t) => {
+    const { run, remove } = setup(t);
+    remove("iw");
+    const r = run(NET_DOWN, { initialFails: 2 });
+    assert.match(r.out, /wifi wlan0: Signal level=-71 dBm/);
+});
+
+test("sin iw ni iwconfig pero con nmcli: usa nmcli con --rescan no", { skip: skipReason }, (t) => {
+    const { run, remove } = setup(t);
+    remove("iw", "iwconfig");
+    const r = run(NET_DOWN, { initialFails: 2 });
+    assert.match(r.calls, /nmcli --rescan no -t -f ACTIVE,SSID,SIGNAL,RATE dev wifi/);
+    assert.match(r.out, /wifi wlan0: yes:MiRedWifi:51:130 Mbit\/s/);
+    assert.doesNotMatch(r.out, /OtraRed/);
+});
+
+test("sin iw, iwconfig ni nmcli: n/a, pero /proc/net/wireless sigue", { skip: skipReason }, (t) => {
+    const { run, remove } = setup(t);
+    remove("iw", "iwconfig", "nmcli");
+    const r = run(NET_DOWN, { initialFails: 2 });
+    assert.match(r.out, /wifi wlan0: n\/a/);
+    assert.match(r.out, /wireless wlan0: calidad de enlace 41, nivel -69 dBm/);
+});
+
+test("interfaz ausente de /proc/net/wireless: n/a sin romper", { skip: skipReason }, (t) => {
+    const { run, wireless } = setup(t);
+    fs.writeFileSync(wireless, " face | tus | link level noise\n wlan1: 0000   30.  -80.  -256 0 0 0 0 0 0\n");
+    let r = run(NET_DOWN, { initialFails: 2 });
+    assert.strictEqual(r.status, 0);
+    assert.match(r.out, /wireless wlan0: n\/a/);
+    r = run({ ...NET_DOWN, NET_WATCHDOG_WIRELESS_FILE: "/no/existe" }, { initialFails: 2 });
+    assert.strictEqual(r.status, 0);
+    assert.match(r.out, /wireless wlan0: n\/a/);
 });

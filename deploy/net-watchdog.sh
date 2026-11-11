@@ -16,6 +16,7 @@ set -u
 IFACE="${NET_WATCHDOG_IFACE:-wlan0}"
 STATE="${NET_WATCHDOG_STATE:-/var/lib/followcount/net-watchdog.state}"
 UPTIME_FILE="${NET_WATCHDOG_UPTIME_FILE:-/proc/uptime}"
+WIRELESS_FILE="${NET_WATCHDOG_WIRELESS_FILE:-/proc/net/wireless}"
 PING_TARGETS="${NET_WATCHDOG_PING_TARGETS:-1.1.1.1 8.8.8.8}"
 DNS_HOST="${NET_WATCHDOG_DNS_HOST:-graph.facebook.com}"
 RECOVER_AFTER="${NET_WATCHDOG_RECOVER_AFTER:-3}"
@@ -147,6 +148,17 @@ log "fallo de red $fails (causa: $cause): $detail; sin red desde hace ${outage} 
 
 # --- Utilidades de accion ------------------------------------------------------
 
+# Calidad de enlace y nivel (dBm) de la interfaz segun /proc/net/wireless.
+# No necesita ningun paquete: es solo leer un fichero del kernel.
+wireless_signal() {
+    local res
+    res=$(awk -v ifc="$IFACE" '
+        { sub(/:/, " ") }
+        $1 == ifc { q = $3; l = $4; sub(/[.]$/, "", q); sub(/[.]$/, "", l); print "calidad de enlace " q ", nivel " l " dBm"; exit }
+    ' "$WIRELESS_FILE" 2>/dev/null)
+    echo "${res:-n/a}"
+}
+
 snapshot() {
     local out
     log "--- foto del momento ---"
@@ -159,10 +171,15 @@ snapshot() {
         out=$(iw dev "$IFACE" link 2>&1 | tr '\n' ' ')
     elif command -v iwconfig >/dev/null 2>&1; then
         out=$(iwconfig "$IFACE" 2>&1 | tr '\n' ' ')
+    elif command -v nmcli >/dev/null 2>&1; then
+        # --rescan no: sin el, nmcli puede lanzar un escaneo de redes justo
+        # cuando la red va mal, y eso la empeora.
+        out=$(nmcli --rescan no -t -f ACTIVE,SSID,SIGNAL,RATE dev wifi 2>&1 | grep '^yes' | head -n 1)
     else
         out="n/a"
     fi
     log "wifi $IFACE: ${out:-n/a}"
+    log "wireless $IFACE: $(wireless_signal)"
     log "ip -4 addr: $(ip -4 addr show dev "$IFACE" 2>&1 | tr '\n' ' ')"
     log "ip route: $(ip route 2>&1 | tr '\n' ' ')"
     log "contador de fallos: $fails; sin red desde hace ${outage} s"
