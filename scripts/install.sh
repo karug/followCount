@@ -70,6 +70,9 @@ SystemMaxUse=50M
 EOF
 sudo systemd-tmpfiles --create --prefix /var/log/journal || true
 sudo systemctl restart systemd-journald || true
+# Reiniciar journald no basta en caliente: sin el flush sigue escribiendo en
+# /run/log/journal (memoria) hasta el siguiente arranque.
+sudo journalctl --flush || true
 
 echo "[7/8] Activando servicios..."
 sudo systemctl daemon-reload
