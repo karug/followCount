@@ -284,8 +284,10 @@ Escalado, con un contador de fallos consecutivos en
 - Al volver la red: contador a cero y una línea con la duración del corte.
 
 No actúa en los primeros 3 min de arranque. Antes de cada acción deja en
-el journal la foto del momento (`vcgencmd get_throttled`, señal wifi,
-`ip -4 addr`, `ip route`, fallos y tiempo sin red). Nunca falla
+el journal la foto del momento (`vcgencmd get_throttled`, señal wifi (calidad de
+enlace y dBm leídos de `/proc/net/wireless`, que no necesita paquetes, y
+además `iw`, `iwconfig` o `nmcli` si hay alguno; `nmcli` siempre con
+`--rescan no` para no lanzar un escaneo con la red mala), `ip -4 addr`, `ip route`, fallos y tiempo sin red). Nunca falla
 ruidosamente: cualquier error acaba en `exit 0`.
 
 `scripts/install.sh` lo instala automáticamente. A mano:
@@ -329,6 +331,11 @@ SystemMaxUse=50M
 ' | sudo tee /etc/systemd/journald.conf.d/followcount.conf
 sudo systemd-tmpfiles --create --prefix /var/log/journal
 sudo systemctl restart systemd-journald
+sudo journalctl --flush
 ```
+
+El `journalctl --flush` es necesario en una instalación en caliente:
+reiniciar journald no basta, y sin el flush sigue escribiendo en
+`/run/log/journal` (memoria) hasta el siguiente arranque.
 
 Tras un reinicio, `journalctl -b -1` muestra el arranque anterior.
