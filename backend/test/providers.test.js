@@ -551,6 +551,11 @@ test("playstore toMetric lleva el sufijo en los metadatos", () => {
 
     assert.strictEqual(metric.metadata.text, "10+");
 
+    assert.strictEqual(
+        metric.metadata.url,
+        "https://play.google.com/store/apps/details?id=app.expirio&hl=es&gl=es"
+    );
+
 });
 
 test("playstore toMetric deja el sufijo vacío sin el más", () => {
@@ -576,5 +581,34 @@ test("playstore fetch lanza cuando la ficha no trae instalaciones", async () => 
         () => provider.fetch({ packageName: "app.inexistente" }),
         /app\.inexistente/
     );
+
+});
+
+test("playstore extractInstalls devuelve null cuando no recibe una cadena", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(provider.extractInstalls({ consent: true }), null);
+
+    assert.strictEqual(provider.extractInstalls(undefined), null);
+
+});
+
+test("playstore fetch devuelve el metric completo de la ficha", async () => {
+
+    const provider = new PlayStoreProvider();
+
+    provider.fetchHtml = async () =>
+        `]]],["22 jun 2026",[1782134073,512000000]],null,null,["10+",10,18,"10+"],null,null`;
+
+    const metric = await provider.fetch({ packageName: "app.expirio" });
+
+    assert.strictEqual(metric.type, "playstore");
+
+    assert.strictEqual(metric.value, 10);
+
+    assert.strictEqual(metric.metadata.text, "10+");
+
+    assert.strictEqual(metric.metadata.suffix, "+");
 
 });

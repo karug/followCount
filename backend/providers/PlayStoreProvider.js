@@ -54,10 +54,16 @@ class PlayStoreProvider {
 
     extractInstalls(html) {
 
+        if (typeof html !== "string") {
+
+            return null;
+
+        }
+
         // The listing embeds the installs as ["10+",10,18,"10+"]:
         // label, floor and ceiling of the bucket Google shows.
         const match = html.match(
-            /\["(\d[\d., \s]*\+?)",(\d+),(\d+),"/
+            /\["(\d[\d.,\s]*\+?)",(\d+),(\d+),"/
         );
 
         if (!match) {
