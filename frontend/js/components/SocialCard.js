@@ -35,7 +35,8 @@ export default class SocialCard {
             Formatter.capitalize(metric.type);
 
         this.#value.textContent =
-            Formatter.compact(metric.value);
+            Formatter.compact(metric.value) +
+            (metric.metadata?.suffix ?? '');
 
         this.#icon.src =
             `icons/${metric.type}.svg`;
@@ -128,7 +129,7 @@ export default class SocialCard {
 
             Formatter.compact(
                 this.#metric.value
-            ),
+            ) + (this.#metric.metadata?.suffix ?? ''),
 
             ['social-value']
 

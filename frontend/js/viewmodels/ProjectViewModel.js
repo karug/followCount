@@ -27,6 +27,8 @@ export default class ProjectViewModel {
 
         return this.#project.metrics.find(
             metric => metric.type === this.#project.primary
+        ) ?? this.#project.metrics.find(
+            metric => !metric.metadata?.suffix
         ) ?? this.#project.metrics[0];
 
     }

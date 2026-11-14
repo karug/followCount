@@ -20,6 +20,7 @@ header{display:flex;justify-content:space-between;align-items:center}
 .github{border-color:#666}
 .insta{border-color:#b2f}
 .tiktok{border-color:#2bb}
+.playstore{border-color:#01875f}
 footer{display:flex;justify-content:center;padding-top:6px}
 .dots span{display:inline-block;width:8px;height:8px;border-radius:50%;background:#555;margin:0 4px}
 .dots .on{background:#fff}
