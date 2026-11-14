@@ -63,7 +63,7 @@ el código:
 
 ---
 
-### Tarea 1: el provider de Google Play
+### Task 1: el provider de Google Play
 
 **Ficheros:**
 - Crear: `backend/providers/PlayStoreProvider.js`
@@ -241,7 +241,7 @@ git commit -m "feat(playstore): provider que lee las instalaciones de la ficha p
 
 ---
 
-### Tarea 2: el canal nuevo en la configuración
+### Task 2: el canal nuevo en la configuración
 
 **Ficheros:**
 - Modificar: `backend/services/ProviderFactory.js` (import y registro)
@@ -364,7 +364,7 @@ git commit -m "feat(playstore): registrar el canal y validar su packageName"
 
 ---
 
-### Tarea 3: la tarjeta en la pantalla
+### Task 3: la tarjeta en la pantalla
 
 **Ficheros:**
 - Modificar: `frontend/js/components/SocialCard.js` (el valor se pinta en dos
@@ -426,7 +426,7 @@ git commit -m "feat(playstore): tarjeta de descargas con el escalón de la ficha
 
 ---
 
-### Tarea 4: el panel y la documentación
+### Task 4: el panel y la documentación
 
 **Ficheros:**
 - Modificar: `frontend/admin/admin.js` (`CHANNEL_TYPES` línea 17,
