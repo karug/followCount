@@ -528,6 +528,39 @@ test("playstore extractInstalls devuelve null cuando el patrón no está", () =>
 
 });
 
+test("playstore extractInstalls no casa un array cuyo cuarto campo no repite el primero", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.extractInstalls(`null,["10+",10,18,"otra cosa"],null`),
+        null
+    );
+
+});
+
+test("playstore extractInstalls descarta un escalón con el suelo mayor que el techo", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.extractInstalls(`null,["50+",50,18,"50+"],null`),
+        null
+    );
+
+});
+
+test("playstore buildUrl ignora los espacios al copiar el packageName", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.buildUrl("  app.expirio \n"),
+        "https://play.google.com/store/apps/details?id=app.expirio&hl=es&gl=es"
+    );
+
+});
+
 test("playstore toMetric lleva el sufijo en los metadatos", () => {
 
     const provider = new PlayStoreProvider();

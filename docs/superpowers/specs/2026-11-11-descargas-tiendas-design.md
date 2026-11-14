@@ -83,8 +83,11 @@ Las decisiones 5 y 6 son posteriores y se comen a la 2 y a la 3:
    el techo de una vez. `google-play-scraper` traería 20 ficheros y un árbol de
    dependencias para esta línea. El despliegue en la Pi sigue siendo `git pull`
    y reiniciar.
-4. **Se muestra el texto de la ficha, no un número inventado.** El `Metric`
-   lleva `value: 10` (el suelo) y el sufijo `+` aparte; la tarjeta pinta `10+`.
+4. **Se muestra el suelo de la ficha con su sufijo, no un número inventado.** El
+   `Metric` lleva `value: 10` (el suelo) y el sufijo `+` aparte; la tarjeta pinta
+   el suelo compactado con el sufijo detrás, como las otras siete tarjetas
+   compactan (con `1.000+` en la ficha, la pantalla dirá `1.0K+`), y
+   `metadata.text` guarda el texto literal de la ficha para diagnosticar.
    Pintar `10` a secas convertiría un escalón en una cifra exacta, que es
    mentira por abajo; pintar el techo lo sería por arriba.
 5. **No puede ser el canal principal.** El contador grande es `FlipCounter`,

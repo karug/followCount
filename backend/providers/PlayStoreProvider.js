@@ -48,7 +48,7 @@ class PlayStoreProvider {
     buildUrl(packageName) {
 
         return "https://play.google.com/store/apps/details" +
-            `?id=${encodeURIComponent(packageName)}&hl=es&gl=es`;
+            `?id=${encodeURIComponent(String(packageName).trim())}&hl=es&gl=es`;
 
     }
 
@@ -61,12 +61,25 @@ class PlayStoreProvider {
         }
 
         // The listing embeds the installs as ["10+",10,18,"10+"]:
-        // label, floor and ceiling of the bucket Google shows.
+        // label, floor and ceiling of the bucket Google shows, and
+        // the label again. Requiring that repeat (\1) anchors the
+        // pattern: any other four-field array would publish a wrong
+        // number as good, and lastGood would keep it for ever.
         const match = html.match(
-            /\["(\d[\d.,\s]*\+?)",(\d+),(\d+),"/
+            /\["(\d[\d.,\s]*\+?)",(\d+),(\d+),"\1"/
         );
 
         if (!match) {
+
+            return null;
+
+        }
+
+        const min = Number(match[2]);
+
+        const max = Number(match[3]);
+
+        if (min > max) {
 
             return null;
 
@@ -76,9 +89,9 @@ class PlayStoreProvider {
 
             text: match[1],
 
-            min: Number(match[2]),
+            min,
 
-            max: Number(match[3])
+            max
 
         };
 

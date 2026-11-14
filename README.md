@@ -147,8 +147,9 @@ formato):
 - Facebook admite `username` o `pageId` (id numérico de la página).
 - `playstore` se configura con `packageName` (por ejemplo `app.expirio`),
   no con `username`. Muestra las descargas de la ficha pública de Google
-  Play, que no publica una cifra exacta sino el escalón: `10+` puede ser
-  cualquier valor entre 10 y 49. Por eso no puede ser el canal principal
+  Play, que no publica una cifra exacta sino un escalón (`10+`); la ficha
+  trae además un techo propio para ese escalón, que el canal guarda en
+  `metadata.max`. Por eso no puede ser el canal principal
   (`primaryChannel`). Se recomienda `cacheSeconds: 21600` (seis horas,
   cuatro lecturas al día). La App Store no está soportada: su ficha
   pública no publica el número de descargas.

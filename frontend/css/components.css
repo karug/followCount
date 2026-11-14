@@ -299,6 +299,30 @@
 
 }
 
+/* A lone card stretches to the full height: group title and
+   value in the middle instead of pinning them to both edges. */
+.social-card:only-child {
+
+    justify-content: center;
+
+    gap: 10px;
+
+}
+
+.social-card:only-child .social-body {
+
+    flex: 0 0 auto;
+
+    align-items: center;
+
+}
+
+.social-card:only-child .social-value {
+
+    margin-top: 0;
+
+}
+
 .social-card.youtube {
 
     border-color: rgba(255,0,0,.25);

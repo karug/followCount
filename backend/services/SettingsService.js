@@ -29,6 +29,10 @@ const ENV_TO_SECRET = {
 
 const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook", "playstore"];
 
+// Stepped channels (Google gives a bucket, not a figure) that the
+// flip counter cannot draw, so they can never be the primary one.
+const NOT_PRIMARY_TYPES = ["playstore"];
+
 const BLOCKS = ["config", "secrets", "admin", "meta"];
 
 class ValidationError extends Error {
@@ -136,8 +140,8 @@ function validateConfig(config) {
             validateChannel(channel, `${label}, canal ${channelIndex + 1}`, errors);
         });
 
-        if (project.primaryChannel === "playstore") {
-            errors.push(`${label}: playstore no puede ser el canal principal`);
+        if (NOT_PRIMARY_TYPES.includes(project.primaryChannel)) {
+            errors.push(`${label}: ${project.primaryChannel} no puede ser el canal principal`);
         } else if (project.primaryChannel !== undefined
             && !project.channels.some(channel => channel && channel.type === project.primaryChannel)) {
             errors.push(`${label}: primaryChannel "${project.primaryChannel}" no coincide con ningún canal`);
@@ -384,6 +388,7 @@ class SettingsService extends EventEmitter {
 module.exports = {
     SettingsService,
     SECRET_NAMES,
+    NOT_PRIMARY_TYPES,
     ValidationError,
     validateConfig
 };
