@@ -122,7 +122,7 @@ export default class ProjectScreen {
         );
 
         this.#logo = Dom.image(
-            'assets/project-placeholder.png',
+            'assets/project-placeholder.svg',
             'Project Logo',
             ['project-logo']
         );
