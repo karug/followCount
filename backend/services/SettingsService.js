@@ -136,11 +136,11 @@ function validateConfig(config) {
             validateChannel(channel, `${label}, canal ${channelIndex + 1}`, errors);
         });
 
-        if (project.primaryChannel !== undefined
+        if (project.primaryChannel === "playstore") {
+            errors.push(`${label}: playstore no puede ser el canal principal`);
+        } else if (project.primaryChannel !== undefined
             && !project.channels.some(channel => channel && channel.type === project.primaryChannel)) {
             errors.push(`${label}: primaryChannel "${project.primaryChannel}" no coincide con ningún canal`);
-        } else if (project.primaryChannel === "playstore") {
-            errors.push(`${label}: playstore no puede ser el canal principal`);
         }
 
     });

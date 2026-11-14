@@ -413,3 +413,21 @@ test("playstore no puede ser el canal principal", () => {
     assert.match(errors[0], /principal/);
 
 });
+
+test("playstore como canal principal sin canal playstore da el error de principal", () => {
+
+    const errors = validateConfig({
+        projects: [{
+            name: "Expirio",
+            channels: [{ type: "tiktok", username: "u" }],
+            primaryChannel: "playstore"
+        }]
+    });
+
+    assert.strictEqual(errors.length, 1);
+
+    assert.match(errors[0], /principal/);
+
+    assert.doesNotMatch(errors[0], /no coincide/);
+
+});
