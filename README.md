@@ -173,10 +173,10 @@ primera migración:
 | `FACEBOOK_ACCESS_TOKEN` | — | Opcional: si no se indica, se reutiliza el de Instagram (mismo permiso `pages_read_engagement`); sin ninguno de los dos, se usa el widget público (redondea cifras grandes: "154M") |
 | `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | — | Opcional: permiten al backend comprobar la caducidad real de los tokens de Meta y alargar los de corta duración |
 
-TikTok no requiere credenciales (endpoint público); igual que
-Instagram sin token, puede fallar puntualmente si la plataforma
-bloquea la petición — el canal se omite en ese refresco sin tumbar
-el dashboard.
+TikTok y Google Play (`playstore`) no requieren credenciales
+(endpoint o ficha públicos); igual que Instagram sin token, pueden
+fallar puntualmente si la plataforma bloquea la petición — el canal
+se omite en ese refresco sin tumbar el dashboard.
 
 ### Token de Instagram/Facebook (Graph API)
 

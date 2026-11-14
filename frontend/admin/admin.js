@@ -479,12 +479,11 @@ function channelFields(channel) {
 
 }
 
-// A primary channel whose type no longer exists, or can't be primary, would fail server validation.
+// A primary channel whose type no longer exists would fail server validation.
 function dropOrphanPrimary(project) {
 
     if (project.primaryChannel !== undefined
-        && (NOT_PRIMARY.includes(project.primaryChannel)
-            || !project.channels.some(channel => channel.type === project.primaryChannel))) {
+        && !project.channels.some(channel => channel.type === project.primaryChannel)) {
         delete project.primaryChannel;
     }
 
@@ -556,8 +555,10 @@ function renderProject(project, index) {
 
     project.channels ??= [];
 
-    // A stored primary that can't be offered below must not survive silently.
-    dropOrphanPrimary(project);
+    // A stored primary that can't be offered below would be rejected by the server.
+    if (NOT_PRIMARY.includes(project.primaryChannel)) {
+        delete project.primaryChannel;
+    }
 
     const primary = h("select", {},
         h("option", { value: "" }, "(ninguno)"),
