@@ -84,6 +84,11 @@ Todos los providers implementados (2026-07-12) con la interfaz común
 -   **X**: API v2 (`X_BEARER_TOKEN`).
 -   **Facebook Pages**: Graph API (`FACEBOOK_ACCESS_TOKEN`), admite
     `username` o `pageId`.
+-   **Google Play** (`playstore`): descargas de la ficha pública, con
+    `packageName`. Muestra el escalón que publica Google (`10+` es
+    cualquier valor entre 10 y 49), no puede ser canal principal y se
+    recomienda `cacheSeconds: 21600`. La App Store no está: su ficha
+    pública no publica descargas.
 
 Hot reload de `config.json`: se recarga por mtime en cada refresco
 del dashboard, sin reiniciar; si el JSON es inválido se mantiene la
