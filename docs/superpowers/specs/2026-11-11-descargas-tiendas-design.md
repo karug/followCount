@@ -79,8 +79,11 @@ Las decisiones 5 y 6 son posteriores y se comen a la 2 y a la 3:
    existe por canal y nadie más lo necesita; seis horas son cuatro lecturas al
    día. Sin servicio de refresco propio, sin estado nuevo, sin serie diaria.
 3. **Cero dependencias npm.** Un `GET` con el axios que ya está y una expresión
-   regular contra `\["(\d[\d.,\s]*\+)",(\d+),(\d+),"` sacan el texto, el suelo y
-   el techo de una vez. `google-play-scraper` traería 20 ficheros y un árbol de
+   regular contra `\["(\d[\d.,\s]*\+?)",(\d+),(\d+),"\1"` sacan el texto, el
+   suelo y el techo de una vez. La retrorreferencia final no es adorno: en la
+   ficha el cuarto campo repite literalmente el primero, y anclarlo es lo que
+   impide que un array vecino de la misma forma cuele un número ajeno como si
+   fuera bueno. `google-play-scraper` traería 20 ficheros y un árbol de
    dependencias para esta línea. El despliegue en la Pi sigue siendo `git pull`
    y reiniciar.
 4. **Se muestra el suelo de la ficha con su sufijo, no un número inventado.** El
