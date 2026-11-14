@@ -20,16 +20,19 @@ export default class ProjectViewModel {
 
     }
 
-    // Falls back to the first available metric when the configured
-    // primary channel failed (blocked account, API down, ...), so
-    // the main counter never renders empty.
+    // Falls back to the first exact metric when the configured
+    // primary channel failed (blocked account, API down, ...).
+    // Stepped metrics (suffix, e.g. "10+") are never promoted:
+    // the flip counter would show the floor as an exact figure.
+    // With nothing usable there is no primary and the screen
+    // shows only the cards.
     get primary() {
 
         return this.#project.metrics.find(
             metric => metric.type === this.#project.primary
         ) ?? this.#project.metrics.find(
             metric => !metric.metadata?.suffix
-        ) ?? this.#project.metrics[0];
+        );
 
     }
 

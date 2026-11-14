@@ -37,14 +37,23 @@ export default class ProjectScreen {
 
     update(project) {
 
+        this.#element.classList.toggle(
+            'no-primary',
+            !project.network
+        );
+
         this.#logo.src = project.logo;
 
         this.#name.textContent = project.name;
 
         this.#handle.textContent = project.handle;
 
-        this.#networkIcon.src =
-            `icons/${project.network}.svg`;
+        if (project.network) {
+
+            this.#networkIcon.src =
+                `icons/${project.network}.svg`;
+
+        }
 
         this.#networkIcon.alt = project.network;
 
