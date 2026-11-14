@@ -1,0 +1,8 @@
+[Unit]
+Description=followCount net watchdog (recovers wifi / reboots if the Pi loses the network)
+After=network.target
+
+[Service]
+Type=oneshot
+StateDirectory=followcount
+ExecStart=/home/info/followCount/deploy/net-watchdog.sh
