@@ -27,7 +27,7 @@ const ENV_TO_SECRET = {
     FACEBOOK_APP_SECRET: "facebookAppSecret"
 };
 
-const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook"];
+const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook", "playstore"];
 
 const BLOCKS = ["config", "secrets", "admin", "meta"];
 
@@ -76,6 +76,10 @@ function validateChannel(channel, label, errors) {
     } else if (channel.type === "facebook") {
         if (!channel.pageId && !channel.username) {
             errors.push(`${label}: falta el pageId o el username`);
+        }
+    } else if (channel.type === "playstore") {
+        if (typeof channel.packageName !== "string" || channel.packageName.trim() === "") {
+            errors.push(`${label}: falta el packageName`);
         }
     } else if (!channel.username) {
         errors.push(`${label}: falta el username`);
@@ -135,6 +139,8 @@ function validateConfig(config) {
         if (project.primaryChannel !== undefined
             && !project.channels.some(channel => channel && channel.type === project.primaryChannel)) {
             errors.push(`${label}: primaryChannel "${project.primaryChannel}" no coincide con ningún canal`);
+        } else if (project.primaryChannel === "playstore") {
+            errors.push(`${label}: playstore no puede ser el canal principal`);
         }
 
     });

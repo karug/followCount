@@ -357,3 +357,59 @@ test("el error de un settings.json corrupto no incluye su contenido", () => {
     );
 
 });
+
+test("un canal playstore exige packageName", () => {
+
+    const errors = validateConfig({
+        projects: [{ name: "Expirio", channels: [{ type: "playstore" }] }]
+    });
+
+    assert.strictEqual(errors.length, 1);
+
+    assert.match(errors[0], /packageName/);
+
+});
+
+test("un canal playstore rechaza un packageName en blanco", () => {
+
+    const errors = validateConfig({
+        projects: [{
+            name: "Expirio",
+            channels: [{ type: "playstore", packageName: "   " }]
+        }]
+    });
+
+    assert.strictEqual(errors.length, 1);
+
+    assert.match(errors[0], /packageName/);
+
+});
+
+test("un canal playstore con packageName es válido", () => {
+
+    const errors = validateConfig({
+        projects: [{
+            name: "Expirio",
+            channels: [{ type: "playstore", packageName: "app.expirio", cacheSeconds: 21600 }]
+        }]
+    });
+
+    assert.deepStrictEqual(errors, []);
+
+});
+
+test("playstore no puede ser el canal principal", () => {
+
+    const errors = validateConfig({
+        projects: [{
+            name: "Expirio",
+            channels: [{ type: "playstore", packageName: "app.expirio" }],
+            primaryChannel: "playstore"
+        }]
+    });
+
+    assert.strictEqual(errors.length, 1);
+
+    assert.match(errors[0], /principal/);
+
+});

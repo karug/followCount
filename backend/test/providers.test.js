@@ -612,3 +612,11 @@ test("playstore fetch devuelve el metric completo de la ficha", async () => {
     assert.strictEqual(metric.metadata.suffix, "+");
 
 });
+
+test("la fábrica conoce el proveedor de playstore", () => {
+
+    const factory = new ProviderFactory(makeSettings());
+
+    assert.ok(factory.has("playstore"));
+
+});
