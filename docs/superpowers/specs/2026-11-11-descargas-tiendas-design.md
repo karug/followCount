@@ -128,5 +128,8 @@ Un canal nuevo cuesta exactamente esto en este proyecto, y nada más:
 2. Google puede servir una página distinta sin avisar. El test del fixture
    detecta que el parseo se rompió, no que Google cambió: si la pantalla pierde
    la tarjeta, lo primero que hay que mirar es si el patrón sigue ahí.
-3. Qué poner de `label` del `Metric`: «Descargas» dice lo que es mejor que
-   «Playstore», que es lo que saldría del `type` por defecto.
+3. Cerrado: el título de la tarjeta lo pone `SocialCard` a partir del `type`,
+   igual que en las otras siete, así que dirá «Playstore». El `label` del
+   `Metric` lleva el `packageName`, que es lo que identifica a la app. Poner
+   «Descargas» en el título obligaría a tocar `SocialCard` para una excepción, y
+   en una tarjeta de Play el número que se espera son descargas.
