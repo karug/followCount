@@ -5,6 +5,7 @@ const TikTokProvider = require("../providers/TikTokProvider");
 const TwitchProvider = require("../providers/TwitchProvider");
 const XProvider = require("../providers/XProvider");
 const FacebookProvider = require("../providers/FacebookProvider");
+const PlayStoreProvider = require("../providers/PlayStoreProvider");
 
 const defaultSettings = require("./settings");
 
@@ -21,6 +22,7 @@ class ProviderFactory {
         this.register("twitch", new TwitchProvider(settings));
         this.register("x", new XProvider(settings));
         this.register("facebook", new FacebookProvider(settings));
+        this.register("playstore", new PlayStoreProvider());
 
     }
 

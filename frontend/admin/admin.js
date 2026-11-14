@@ -14,7 +14,10 @@ const SECRET_LABELS = {
 
 const SECRET_NAMES = Object.keys(SECRET_LABELS);
 
-const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook"];
+const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook", "playstore"];
+
+// Play Store publishes a download tier, not a count: the backend rejects it as primary.
+const NOT_PRIMARY = ["playstore"];
 
 const ALERT_TEXTS = {
     "meta-token-invalid": "Un token de Meta (Instagram o Facebook) no es válido.",
@@ -466,6 +469,9 @@ function channelFields(channel) {
         case "instagram":
             return [field("Usuario", channel, "username"), field("Facebook Page ID (opcional)", channel, "facebookPageId")];
 
+        case "playstore":
+            return [field("Package name", channel, "packageName")];
+
         default:
             return [field("Usuario", channel, "username")];
 
@@ -502,6 +508,10 @@ function renderChannel(project, channel, channelIndex) {
 
         if (channel.type !== "instagram") {
             delete channel.facebookPageId;
+        }
+
+        if (channel.type !== "playstore") {
+            delete channel.packageName;
         }
 
         dropOrphanPrimary(project);
@@ -545,9 +555,15 @@ function renderProject(project, index) {
 
     project.channels ??= [];
 
+    // A stored primary that can't be offered below would be rejected by the server.
+    if (NOT_PRIMARY.includes(project.primaryChannel)) {
+        delete project.primaryChannel;
+    }
+
     const primary = h("select", {},
         h("option", { value: "" }, "(ninguno)"),
         [...new Set(project.channels.map(channel => channel.type))]
+            .filter(type => !NOT_PRIMARY.includes(type))
             .map(type => h("option", { value: type, selected: type === project.primaryChannel }, type))
     );
 

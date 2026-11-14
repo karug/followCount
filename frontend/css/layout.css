@@ -155,6 +155,33 @@ body {
    Main counter card
    =========================================================== */
 
+.screen.no-primary .main-counter-card {
+    display: none;
+}
+
+.no-data-message {
+    display: none;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: var(--font-lg);
+    font-weight: var(--weight-semibold);
+}
+
+/* No metric at all: keep the block and say so, instead of
+   leaving the screen with only a name. */
+.screen.no-data .main-counter-card {
+    display: flex;
+}
+
+.screen.no-data .networkHeader,
+.screen.no-data .flip-counter {
+    display: none;
+}
+
+.screen.no-data .no-data-message {
+    display: block;
+}
+
 .main-counter-card {
     flex: 0 0 122px;
     display: flex;

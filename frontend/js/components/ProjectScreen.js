@@ -37,14 +37,28 @@ export default class ProjectScreen {
 
     update(project) {
 
+        this.#element.classList.toggle(
+            'no-primary',
+            !project.network
+        );
+
+        this.#element.classList.toggle(
+            'no-data',
+            project.metrics.length === 0
+        );
+
         this.#logo.src = project.logo;
 
         this.#name.textContent = project.name;
 
         this.#handle.textContent = project.handle;
 
-        this.#networkIcon.src =
-            `icons/${project.network}.svg`;
+        if (project.network) {
+
+            this.#networkIcon.src =
+                `icons/${project.network}.svg`;
+
+        }
 
         this.#networkIcon.alt = project.network;
 
@@ -183,7 +197,13 @@ export default class ProjectScreen {
 
         this.#counter = new FlipCounter(counterContainer);
 
-        Dom.append(card, network, counterContainer);
+        const empty = Dom.text(
+            'div',
+            'Sin datos de ningún canal',
+            ['no-data-message']
+        );
+
+        Dom.append(card, network, counterContainer, empty);
 
         return card;
 
