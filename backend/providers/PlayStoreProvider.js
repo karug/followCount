@@ -48,7 +48,7 @@ class PlayStoreProvider {
     buildUrl(packageName) {
 
         return "https://play.google.com/store/apps/details" +
-            `?id=${encodeURIComponent(String(packageName).trim())}&hl=es&gl=es`;
+            `?id=${encodeURIComponent(packageName.trim())}&hl=es&gl=es`;
 
     }
 
