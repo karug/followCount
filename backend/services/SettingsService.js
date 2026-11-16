@@ -27,7 +27,11 @@ const ENV_TO_SECRET = {
     FACEBOOK_APP_SECRET: "facebookAppSecret"
 };
 
-const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook"];
+const CHANNEL_TYPES = ["youtube", "github", "instagram", "tiktok", "twitch", "x", "facebook", "playstore"];
+
+// Stepped channels (Google gives a bucket, not a figure) that the
+// flip counter cannot draw, so they can never be the primary one.
+const NOT_PRIMARY_TYPES = ["playstore"];
 
 const BLOCKS = ["config", "secrets", "admin", "meta"];
 
@@ -76,6 +80,10 @@ function validateChannel(channel, label, errors) {
     } else if (channel.type === "facebook") {
         if (!channel.pageId && !channel.username) {
             errors.push(`${label}: falta el pageId o el username`);
+        }
+    } else if (channel.type === "playstore") {
+        if (typeof channel.packageName !== "string" || channel.packageName.trim() === "") {
+            errors.push(`${label}: falta el packageName`);
         }
     } else if (!channel.username) {
         errors.push(`${label}: falta el username`);
@@ -132,7 +140,9 @@ function validateConfig(config) {
             validateChannel(channel, `${label}, canal ${channelIndex + 1}`, errors);
         });
 
-        if (project.primaryChannel !== undefined
+        if (NOT_PRIMARY_TYPES.includes(project.primaryChannel)) {
+            errors.push(`${label}: ${project.primaryChannel} no puede ser el canal principal`);
+        } else if (project.primaryChannel !== undefined
             && !project.channels.some(channel => channel && channel.type === project.primaryChannel)) {
             errors.push(`${label}: primaryChannel "${project.primaryChannel}" no coincide con ningún canal`);
         }
@@ -378,6 +388,7 @@ class SettingsService extends EventEmitter {
 module.exports = {
     SettingsService,
     SECRET_NAMES,
+    NOT_PRIMARY_TYPES,
     ValidationError,
     validateConfig
 };
