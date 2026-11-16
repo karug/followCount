@@ -2,7 +2,7 @@
 
 Gadget para Raspberry Pi con pantalla SPI 480x320 que muestra seguidores
 y métricas de varios proyectos (YouTube, GitHub, Instagram, TikTok,
-Twitch, X y Facebook Pages).
+Twitch, X, Facebook Pages y descargas de Google Play).
 
 ## Requisitos
 
@@ -124,7 +124,8 @@ formato):
         { "type": "tiktok", "username": "expirioapp" },
         { "type": "twitch", "username": "expirioapp" },
         { "type": "x", "username": "expirioapp" },
-        { "type": "facebook", "username": "expirioapp" }
+        { "type": "facebook", "username": "expirioapp" },
+        { "type": "playstore", "packageName": "app.expirio", "cacheSeconds": 21600 }
       ]
     }
   ]
@@ -144,6 +145,14 @@ formato):
   refresco del dashboard; útil con límites de API (GitHub sin token:
   60 peticiones/hora).
 - Facebook admite `username` o `pageId` (id numérico de la página).
+- `playstore` se configura con `packageName` (por ejemplo `app.expirio`),
+  no con `username`. Muestra las descargas de la ficha pública de Google
+  Play, que no publica una cifra exacta sino un escalón (`10+`); la ficha
+  trae además un techo propio para ese escalón, que el canal guarda en
+  `metadata.max`. Por eso no puede ser el canal principal
+  (`primaryChannel`). Se recomienda `cacheSeconds: 21600` (seis horas,
+  cuatro lecturas al día). La App Store no está soportada: su ficha
+  pública no publica el número de descargas.
 
 Los cambios guardados en el panel se aplican en caliente, sin
 reiniciar.
@@ -165,10 +174,10 @@ primera migración:
 | `FACEBOOK_ACCESS_TOKEN` | — | Opcional: si no se indica, se reutiliza el de Instagram (mismo permiso `pages_read_engagement`); sin ninguno de los dos, se usa el widget público (redondea cifras grandes: "154M") |
 | `FACEBOOK_APP_ID` / `FACEBOOK_APP_SECRET` | — | Opcional: permiten al backend comprobar la caducidad real de los tokens de Meta y alargar los de corta duración |
 
-TikTok no requiere credenciales (endpoint público); igual que
-Instagram sin token, puede fallar puntualmente si la plataforma
-bloquea la petición — el canal se omite en ese refresco sin tumbar
-el dashboard.
+TikTok y Google Play (`playstore`) no requieren credenciales
+(endpoint o ficha públicos); igual que Instagram sin token, pueden
+fallar puntualmente si la plataforma bloquea la petición — el canal
+se omite en ese refresco sin tumbar el dashboard.
 
 ### Token de Instagram/Facebook (Graph API)
 
