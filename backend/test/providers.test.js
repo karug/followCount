@@ -4,6 +4,7 @@ const assert = require("node:assert");
 const InstagramProvider = require("../providers/InstagramProvider");
 const FacebookProvider = require("../providers/FacebookProvider");
 const TikTokProvider = require("../providers/TikTokProvider");
+const PlayStoreProvider = require("../providers/PlayStoreProvider");
 const ProviderFactory = require("../services/ProviderFactory");
 const YoutubeProvider = require("../providers/YoutubeProvider");
 const { SettingsService } = require("../services/SettingsService");
@@ -476,5 +477,179 @@ test("graph sends business_discovery with the username in lowercase", async () =
         stub.restore();
 
     }
+
+});
+
+test("playstore extractInstalls saca el escalón, el suelo y el techo", () => {
+
+    const provider = new PlayStoreProvider();
+
+    const html = `]]],["22 jun 2026",[1782134073,512000000]],null,null,["10+",10,18,"10+"],null,null`;
+
+    assert.deepStrictEqual(
+        provider.extractInstalls(html),
+        { text: "10+", min: 10, max: 18 }
+    );
+
+});
+
+test("playstore extractInstalls aguanta el separador de miles español", () => {
+
+    const provider = new PlayStoreProvider();
+
+    const html = `null,null,["1.000+",1000,4999,"1.000+"],null`;
+
+    assert.deepStrictEqual(
+        provider.extractInstalls(html),
+        { text: "1.000+", min: 1000, max: 4999 }
+    );
+
+});
+
+test("playstore extractInstalls acepta un escalón sin el más", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.deepStrictEqual(
+        provider.extractInstalls(`null,["500",500,500,"500"],null`),
+        { text: "500", min: 500, max: 500 }
+    );
+
+});
+
+test("playstore extractInstalls devuelve null cuando el patrón no está", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.extractInstalls("<html>otra página</html>"),
+        null
+    );
+
+});
+
+test("playstore extractInstalls no casa un array cuyo cuarto campo no repite el primero", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.extractInstalls(`null,["10+",10,18,"otra cosa"],null`),
+        null
+    );
+
+});
+
+test("playstore extractInstalls descarta un escalón con el suelo mayor que el techo", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.extractInstalls(`null,["50+",50,18,"50+"],null`),
+        null
+    );
+
+});
+
+test("playstore buildUrl ignora los espacios al copiar el packageName", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(
+        provider.buildUrl("  app.expirio \n"),
+        "https://play.google.com/store/apps/details?id=app.expirio&hl=es&gl=es"
+    );
+
+});
+
+test("playstore toMetric lleva el sufijo en los metadatos", () => {
+
+    const provider = new PlayStoreProvider();
+
+    const metric = provider.toMetric(
+        { text: "10+", min: 10, max: 18 },
+        "app.expirio"
+    );
+
+    assert.strictEqual(metric.type, "playstore");
+
+    assert.strictEqual(metric.label, "app.expirio");
+
+    assert.strictEqual(metric.value, 10);
+
+    assert.strictEqual(metric.logo, null);
+
+    assert.strictEqual(metric.metadata.suffix, "+");
+
+    assert.strictEqual(metric.metadata.max, 18);
+
+    assert.strictEqual(metric.metadata.text, "10+");
+
+    assert.strictEqual(
+        metric.metadata.url,
+        "https://play.google.com/store/apps/details?id=app.expirio&hl=es&gl=es"
+    );
+
+});
+
+test("playstore toMetric deja el sufijo vacío sin el más", () => {
+
+    const provider = new PlayStoreProvider();
+
+    const metric = provider.toMetric(
+        { text: "500", min: 500, max: 500 },
+        "app.expirio"
+    );
+
+    assert.strictEqual(metric.metadata.suffix, "");
+
+});
+
+test("playstore fetch lanza cuando la ficha no trae instalaciones", async () => {
+
+    const provider = new PlayStoreProvider();
+
+    provider.fetchHtml = async () => "<html>otra página</html>";
+
+    await assert.rejects(
+        () => provider.fetch({ packageName: "app.inexistente" }),
+        /app\.inexistente/
+    );
+
+});
+
+test("playstore extractInstalls devuelve null cuando no recibe una cadena", () => {
+
+    const provider = new PlayStoreProvider();
+
+    assert.strictEqual(provider.extractInstalls({ consent: true }), null);
+
+    assert.strictEqual(provider.extractInstalls(undefined), null);
+
+});
+
+test("playstore fetch devuelve el metric completo de la ficha", async () => {
+
+    const provider = new PlayStoreProvider();
+
+    provider.fetchHtml = async () =>
+        `]]],["22 jun 2026",[1782134073,512000000]],null,null,["10+",10,18,"10+"],null,null`;
+
+    const metric = await provider.fetch({ packageName: "app.expirio" });
+
+    assert.strictEqual(metric.type, "playstore");
+
+    assert.strictEqual(metric.value, 10);
+
+    assert.strictEqual(metric.metadata.text, "10+");
+
+    assert.strictEqual(metric.metadata.suffix, "+");
+
+});
+
+test("la fábrica conoce el proveedor de playstore", () => {
+
+    const factory = new ProviderFactory(makeSettings());
+
+    assert.ok(factory.has("playstore"));
 
 });

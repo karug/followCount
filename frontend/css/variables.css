@@ -51,6 +51,7 @@
     --twitch:#9146ff;
     --x:#ffffff;
     --facebook:#1877f2;
+    --playstore:#01875f;
 
     --shadow-card:0 6px 14px rgba(0,0,0,.28);
     --shadow-soft:0 2px 6px rgba(0,0,0,.18);
@@ -60,6 +61,7 @@
     --shadow-tiktok:0 0 18px rgba(0,242,234,.18);
     --shadow-twitch:0 0 18px rgba(145,70,255,.18);
     --shadow-facebook:0 0 18px rgba(24,119,242,.22);
+    --shadow-playstore:0 0 18px rgba(1,135,95,.22);
 
     --digit-width:40px;
     --digit-height:64px;
