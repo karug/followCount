@@ -40,8 +40,16 @@ case "$name" in
   iw) echo "signal: -70 dBm"; exit "$rc" ;;
   iwconfig) echo "Signal level=-71 dBm"; exit "$rc" ;;
   nmcli)
+    # Como el real: una --opcion antes del subcomando es desconocida (--rescan
+    # solo existe en "device wifi list").
+    for a in "$@"; do
+      case "$a" in
+        device|dev|general|connection|radio|networking|monitor) break ;;
+        --*) echo "Error: Option '$a' is unknown, try 'nmcli -help'."; exit 2 ;;
+      esac
+    done
     case "$*" in
-      *"dev wifi"*) echo "no:OtraRed:80:130 Mbit/s"; echo "yes:MiRedWifi:51:130 Mbit/s" ;;
+      *"device wifi list"*|*"dev wifi list"*) echo "no:OtraRed:80:130 Mbit/s"; echo "yes:MiRedWifi:51:130 Mbit/s" ;;
     esac
     exit "$rc" ;;
   *) exit "$rc" ;;
@@ -313,7 +321,7 @@ test("con iw presente se usa iw", { skip: skipReason }, (t) => {
     const r = run(NET_DOWN, { initialFails: 2 });
     assert.match(r.calls, /^iw dev wlan0 link/m);
     assert.match(r.out, /wifi wlan0: signal: -70 dBm/);
-    assert.doesNotMatch(r.calls, /nmcli --rescan/);
+    assert.doesNotMatch(r.calls, /nmcli .*wifi list/);
 });
 
 test("sin iw pero con iwconfig se usa iwconfig", { skip: skipReason }, (t) => {
@@ -327,7 +335,7 @@ test("sin iw ni iwconfig pero con nmcli: usa nmcli con --rescan no", { skip: ski
     const { run, remove } = setup(t);
     remove("iw", "iwconfig");
     const r = run(NET_DOWN, { initialFails: 2 });
-    assert.match(r.calls, /nmcli --rescan no -t -f ACTIVE,SSID,SIGNAL,RATE dev wifi/);
+    assert.match(r.calls, /nmcli -t -f ACTIVE,SSID,SIGNAL,RATE device wifi list --rescan no/);
     assert.match(r.out, /wifi wlan0: yes:MiRedWifi:51:130 Mbit\/s/);
     assert.doesNotMatch(r.out, /OtraRed/);
 });
