@@ -16,7 +16,7 @@ export default class ProjectViewModel {
 
     get logo() {
 
-        return this.#project.logo ?? 'assets/project-placeholder.png';
+        return this.#project.logo ?? 'assets/project-placeholder.svg';
 
     }
 
