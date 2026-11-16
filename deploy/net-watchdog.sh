@@ -174,7 +174,7 @@ snapshot() {
     elif command -v nmcli >/dev/null 2>&1; then
         # --rescan no: sin el, nmcli puede lanzar un escaneo de redes justo
         # cuando la red va mal, y eso la empeora.
-        out=$(nmcli --rescan no -t -f ACTIVE,SSID,SIGNAL,RATE dev wifi 2>&1 | grep '^yes' | head -n 1)
+        out=$(nmcli -t -f ACTIVE,SSID,SIGNAL,RATE device wifi list --rescan no 2>&1 | grep '^yes' | head -n 1)
     else
         out="n/a"
     fi
